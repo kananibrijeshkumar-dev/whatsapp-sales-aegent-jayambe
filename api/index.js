@@ -33,7 +33,7 @@ const qstashClient = new Client({
 // Initialize Gemini
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({
-    model: "gemini-3.5-flash",
+    model: "gemini-3.6-flash",
     systemInstruction: systemPrompt,
     generationConfig: {
         temperature: 0.1 // Strict temperature to prevent hallucination
