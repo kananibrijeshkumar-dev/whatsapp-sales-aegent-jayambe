@@ -11,13 +11,13 @@ const app = express();
 app.use(bodyParser.json());
 
 const PORT = process.env.PORT || 3000;
-const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
+const WHATSAPP_TOKEN = (process.env.WHATSAPP_TOKEN || "").replace(/"/g, "");
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_API_KEY = (process.env.GEMINI_API_KEY || "").replace(/"/g, "");
 const QSTASH_TOKEN = process.env.QSTASH_TOKEN;
 const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_KEY;
+const SUPABASE_KEY = (process.env.SUPABASE_KEY || "").replace(/"/g, "");
 
 let supabase = null;
 if (SUPABASE_URL && SUPABASE_KEY) {
@@ -96,7 +96,7 @@ app.post('/webhook', async (req, res) => {
                 // DEDUPLICATION: Prevent Meta from processing retries multiple times
                 if (processedMessages.has(messageId)) {
                     console.log("Duplicate Webhook Retry Ignored:", messageId);
-                    return res.status(200).send({ reply: aiResponse });
+                    return res.sendStatus(200);
                 }
                 processedMessages.add(messageId);
                 setTimeout(() => processedMessages.delete(messageId), 120000); // Clear after 2 mins
