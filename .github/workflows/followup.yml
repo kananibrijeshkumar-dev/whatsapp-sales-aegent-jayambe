@@ -1,0 +1,11 @@
+name: Hourly Follow-up Cron
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+jobs:
+  run-followup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Follow-up
+        run: curl -X POST https://whatsapp-sales-agent-blond.vercel.app/webhook-cron
