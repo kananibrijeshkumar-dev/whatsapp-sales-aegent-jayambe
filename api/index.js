@@ -102,7 +102,7 @@ app.post('/webhook', async (req, res) => {
                 setTimeout(() => processedMessages.delete(messageId), 120000); // Clear after 2 mins
 
                 const fromPhone = messageObj.from; // Customer's phone number
-                const msgBody = messageObj.text.body; // What the customer said
+                const msgBody = messageObj.text ? messageObj.text.body : "[User sent media/audio. Please tell them to text instead]";
 
                 console.log(`Received message from ${fromPhone}: ${msgBody}`);
 
@@ -210,7 +210,7 @@ async function generateAIResponse(senderId, messageText) {
         return replyText;
     } catch (error) {
         console.error("AI Generation Error:", error.message);
-        return "Sorry, our AI system is currently overloaded due to high demand. Please call us directly at +91 7201890711 for immediate assistance.";
+        return "SYSTEM ERROR: " + error.message + "\nPlease call us at +91 7201890711 for immediate assistance.";
     }
 }
 
