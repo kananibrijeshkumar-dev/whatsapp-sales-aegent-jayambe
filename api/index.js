@@ -155,7 +155,7 @@ app.post('/webhook', async (req, res) => {
 
                 // Send reply back to WhatsApp
                 await sendWhatsAppMessage(fromPhone, aiResponse);
-                return res.status(200).send({ debug_reply: aiResponse, GEMINI_API_KEY: process.env.GEMINI_API_KEY });
+                return res.status(200).send({ debug_reply: aiResponse, SUPA_URL: process.env.SUPABASE_URL, SUPA_KEY: (process.env.SUPABASE_KEY || "").substring(0,10) });
                 
                 // Schedule 1-hour follow up via QStash
                 if (QSTASH_TOKEN) {
