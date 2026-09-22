@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "env": {
+    "WHATSAPP_TOKEN": "EAAXTyBC2XwYBScvRSlGHnGAvjJuE39QMEnLCfI5dyDVdiGRcOCiXjC65DvgdiCuDTKqhCxy2YLGgFiJc2fIZAZBrLvkjIErBmUI8lrqBGfBJghdJs4roxPy6MgtHGEDpZCSj5ZCkK4pND3cvMZCJLXPua34j6SNhoJurshjAHhWVbnC3ToZA1xuMA453BrLwZDZD",
+    "PHONE_NUMBER_ID": "1260228570511181",
+    "VERIFY_TOKEN": "jayambe123",
+    "GEMINI_API_KEY": "AQ.Ab8RN6JI7McH1lYGs88SygYNXYMk1P4uNR73X8EoY_XRQEk1GQ",
+    "QSTASH_URL": "https://qstash-us-east-1.upstash.io",
+    "QSTASH_TOKEN": "eyJVc2VySUQiOiI3ZTQ1ZTgxMy1jOWJlLTRmZjUtYWM1MC0xYTQyMGYwYmZjNTMiLCJQYXNzd29yZCI6IjIxMGU3Y2UyNDRmNjQxYTNiMjIxZjIxZjYwZWE5Y2U2IiwiVHlwZSI6InJlYWRfb25seSJ9"
+  },
+  "builds": [
+    {
+      "src": "api/index.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/api/index.js"
+    }
+  ]
+}
