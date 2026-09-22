@@ -96,7 +96,7 @@ app.post('/webhook', async (req, res) => {
                 // DEDUPLICATION: Prevent Meta from processing retries multiple times
                 if (processedMessages.has(messageId)) {
                     console.log("Duplicate Webhook Retry Ignored:", messageId);
-                    return res.sendStatus(200);
+                    return res.status(200).send({ reply: aiResponse });
                 }
                 processedMessages.add(messageId);
                 setTimeout(() => processedMessages.delete(messageId), 120000); // Clear after 2 mins
