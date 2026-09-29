@@ -141,9 +141,12 @@ app.post('/webhook', async (req, res) => {
                 // Save to Supabase CRM
                 if (supabase) {
                     try {
-                        await supabase
-                            .from('whatsapp_customers')
-                            .upsert({ phone: fromPhone, last_message: new Date() }, { onConflict: 'phone' });
+                        const { data: existingCustomer } = await supabase.from('whatsapp_customers').select('phone').eq('phone', fromPhone).maybeSingle();
+                        if (existingCustomer) {
+                            await supabase.from('whatsapp_customers').update({ last_message: new Date() }).eq('phone', fromPhone);
+                        } else {
+                            await supabase.from('whatsapp_customers').insert({ phone: fromPhone, last_message: new Date() });
+                        }
                         console.log(`Saved ${fromPhone} to Supabase`);
                     } catch (dbError) {
                         console.error('Supabase Error:', dbError.message);
