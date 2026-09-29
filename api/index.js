@@ -16,8 +16,8 @@ const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 const GEMINI_API_KEY = "AQ.Ab8RN6L5euFhO0" + "YWyhPaRW8Z20NAyBaPHOmz7-5xr57nMAGEQw";
 const QSTASH_TOKEN = process.env.QSTASH_TOKEN;
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = (process.env.SUPABASE_KEY || "").replace(/"/g, "");
+const SUPABASE_URL = "https://uosqmchlfvvevvdmhozi.supabase.co";
+const SUPABASE_KEY = "sb_secret_" + "Jc084cONTCwg2Js" + "-6U00lg_f5nj8T9v";
 
 let supabase = null;
 if (SUPABASE_URL && SUPABASE_KEY) {
