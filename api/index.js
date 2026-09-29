@@ -154,7 +154,28 @@ app.post('/webhook', async (req, res) => {
                 }
 
                 // Generate AI Response using the lightning-fast Lite model
-                const aiResponse = await generateAIResponse(fromPhone, msgBody);
+                let aiResponse = await generateAIResponse(fromPhone, msgBody);
+
+                // Extract customer data if AI found any
+                const dataMatch = aiResponse.match(/\[DATA:\s*(\{.*?\})\s*\]/);
+                if (dataMatch && supabase) {
+                    try {
+                        const extractedData = JSON.parse(dataMatch[1]);
+                        const updatePayload = {};
+                        if (extractedData.name) updatePayload.name = extractedData.name;
+                        if (extractedData.city) updatePayload.city = extractedData.city;
+                        if (extractedData.pincode) updatePayload.pincode = extractedData.pincode;
+                        
+                        if (Object.keys(updatePayload).length > 0) {
+                            await supabase.from('whatsapp_customers').update(updatePayload).eq('phone', fromPhone);
+                            console.log(`Updated customer data in Supabase:`, updatePayload);
+                        }
+                    } catch (e) {
+                        console.error('Failed to parse or save customer data:', e.message);
+                    }
+                    // Remove the hidden tag so the customer doesn't see it
+                    aiResponse = aiResponse.replace(dataMatch[0], '').trim();
+                }
 
                 // Send reply back to WhatsApp
                 await sendWhatsAppMessage(fromPhone, aiResponse);
