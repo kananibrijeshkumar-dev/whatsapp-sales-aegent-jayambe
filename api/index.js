@@ -175,11 +175,11 @@ app.post('/webhook', async (req, res) => {
 
                         // --- NATIVE ODOO (VIDUCRM) JSON-RPC INTEGRATION ---
                         const ODOO_URL = "https://v1.viducrm.com";
-                        const ODOO_DB = "YOUR_DATABASE_NAME_HERE";
-                        const ODOO_LOGIN = "whatsapp@jayambe.net";
-                        const ODOO_API_KEY = "YOUR_API_KEY_HERE";
+                        const ODOO_DB = "vicrm_prd_17";
+                        const ODOO_LOGIN = "jaf010@jayambe.net";
+                        const ODOO_API_KEY = "824e7ef8e28156d5b0137ae5ede2d09129e2f371";
                         
-                        if (ODOO_DB !== "YOUR_DATABASE_NAME_HERE" && ODOO_API_KEY !== "YOUR_API_KEY_HERE") {
+                        if (true) {
                             try {
                                 console.log("Authenticating with ViduCRM...");
                                 const authRes = await fetch(`${ODOO_URL}/web/session/authenticate`, {
