@@ -206,8 +206,9 @@ app.post('/webhook', async (req, res) => {
                                 const uid = uidMatch[1];
                                 console.log("Successfully Authenticated! UID:", uid);
                                 
-                                const description = `Phone: ${fromPhone}\nCity: ${extractedData.city || 'N/A'}\nState: ${extractedData.state || 'N/A'}\nPincode: ${extractedData.pincode || 'N/A'}`;
-                                const leadName = `WhatsApp Lead: ${extractedData.name || 'Unknown'}`;
+                                const machineInterest = extractedData.machine || 'Unknown Machine';
+                                const description = `Phone: ${fromPhone}\nInterested In: ${machineInterest}\nCity: ${extractedData.city || 'N/A'}\nState: ${extractedData.state || 'N/A'}\nPincode: ${extractedData.pincode || 'N/A'}`;
+                                const leadName = `WhatsApp Lead: ${extractedData.name || 'Unknown'} - ${machineInterest}`;
                                 
                                 const leadXml = `<?xml version="1.0"?>
                                 <methodCall>
@@ -239,6 +240,18 @@ app.post('/webhook', async (req, res) => {
                                                                 <member>
                                                                     <name>city</name>
                                                                     <value><string>${extractedData.city || ''}</string></value>
+                                                                </member>
+                                                                <member>
+                                                                    <name>phone</name>
+                                                                    <value><string>${fromPhone}</string></value>
+                                                                </member>
+                                                                <member>
+                                                                    <name>mobile</name>
+                                                                    <value><string>${fromPhone}</string></value>
+                                                                </member>
+                                                                <member>
+                                                                    <name>zip</name>
+                                                                    <value><string>${extractedData.pincode || ''}</string></value>
                                                                 </member>
                                                             </struct>
                                                         </value>
