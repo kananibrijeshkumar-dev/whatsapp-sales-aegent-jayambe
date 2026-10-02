@@ -153,6 +153,32 @@ app.post('/webhook', async (req, res) => {
                     }
                 }
 
+                // --- NEW VIDU CRM CONNECTION ---
+                try {
+                    console.log("Sending Lead to ViduCRM...");
+                    
+                    // REPLACE THIS URL with your ViduCRM webhook URL later
+                    const viduUrl = "YOUR_VIDUCRM_WEBHOOK_URL_HERE"; 
+                    
+                    if (viduUrl !== "YOUR_VIDUCRM_WEBHOOK_URL_HERE") {
+                        await fetch(viduUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                phone: fromPhone,
+                                message: msgBody,
+                                source: "WhatsApp Sales Agent"
+                            })
+                        });
+                        console.log("Successfully sent lead to ViduCRM!");
+                    }
+                } catch (viduError) {
+                    console.error("Failed to send to ViduCRM:", viduError.message);
+                }
+                // --------------------------------
+
                 // Generate AI Response using the lightning-fast Lite model
                 let aiResponse = await generateAIResponse(fromPhone, msgBody);
 
