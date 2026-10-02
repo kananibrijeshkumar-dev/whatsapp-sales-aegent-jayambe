@@ -153,31 +153,7 @@ app.post('/webhook', async (req, res) => {
                     }
                 }
 
-                // --- NEW VIDU CRM CONNECTION ---
-                try {
-                    console.log("Sending Lead to ViduCRM...");
-                    
-                    // REPLACE THIS URL with your ViduCRM webhook URL later
-                    const viduUrl = "YOUR_VIDUCRM_WEBHOOK_URL_HERE"; 
-                    
-                    if (viduUrl !== "YOUR_VIDUCRM_WEBHOOK_URL_HERE") {
-                        await fetch(viduUrl, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                phone: fromPhone,
-                                message: msgBody,
-                                source: "WhatsApp Sales Agent"
-                            })
-                        });
-                        console.log("Successfully sent lead to ViduCRM!");
-                    }
-                } catch (viduError) {
-                    console.error("Failed to send to ViduCRM:", viduError.message);
-                }
-                // --------------------------------
+                // Removed dummy webhook. Webhook will now fire natively to Odoo JSON-RPC on lead generation.
 
                 // Generate AI Response using the lightning-fast Lite model
                 let aiResponse = await generateAIResponse(fromPhone, msgBody);
@@ -195,6 +171,65 @@ app.post('/webhook', async (req, res) => {
                         if (Object.keys(updatePayload).length > 0) {
                             await supabase.from('whatsapp_customers').update(updatePayload).eq('phone', fromPhone);
                             console.log(`Updated customer data in Supabase:`, updatePayload);
+                        }
+
+                        // --- NATIVE ODOO (VIDUCRM) JSON-RPC INTEGRATION ---
+                        const ODOO_URL = "https://v1.viducrm.com";
+                        const ODOO_DB = "YOUR_DATABASE_NAME_HERE";
+                        const ODOO_LOGIN = "whatsapp@jayambe.net";
+                        const ODOO_API_KEY = "YOUR_API_KEY_HERE";
+                        
+                        if (ODOO_DB !== "YOUR_DATABASE_NAME_HERE" && ODOO_API_KEY !== "YOUR_API_KEY_HERE") {
+                            try {
+                                console.log("Authenticating with ViduCRM...");
+                                const authRes = await fetch(`${ODOO_URL}/web/session/authenticate`, {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({
+                                        jsonrpc: "2.0",
+                                        params: { db: ODOO_DB, login: ODOO_LOGIN, password: ODOO_API_KEY }
+                                    })
+                                });
+                                
+                                const authData = await authRes.json();
+                                if (authData.error || !authData.result || !authData.result.session_id) {
+                                    console.error("ViduCRM Authentication Failed:", authData.error || authData);
+                                } else {
+                                    const sessionId = "session_id=" + authData.result.session_id;
+                                    console.log("Creating Lead in ViduCRM...");
+                                    
+                                    const leadRes = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
+                                        method: "POST",
+                                        headers: { 
+                                            "Content-Type": "application/json",
+                                            "Cookie": sessionId
+                                        },
+                                        body: JSON.stringify({
+                                            jsonrpc: "2.0",
+                                            params: {
+                                                model: "crm.lead",
+                                                method: "create",
+                                                args: [[{
+                                                    name: `WhatsApp Lead: ${extractedData.name || 'Unknown'}`,
+                                                    contact_name: extractedData.name || '',
+                                                    city: extractedData.city || '',
+                                                    description: `Phone: ${fromPhone}\nCity: ${extractedData.city || 'N/A'}\nState: ${extractedData.state || 'N/A'}\nPincode: ${extractedData.pincode || 'N/A'}`
+                                                }]],
+                                                kwargs: {}
+                                            }
+                                        })
+                                    });
+                                    
+                                    const leadResult = await leadRes.json();
+                                    if (leadResult.error) {
+                                        console.error("Failed to create lead in ViduCRM:", leadResult.error);
+                                    } else {
+                                        console.log("Successfully created Lead in ViduCRM! Lead ID:", leadResult.result);
+                                    }
+                                }
+                            } catch (e) {
+                                console.error("Error communicating with ViduCRM:", e);
+                            }
                         }
                     } catch (e) {
                         console.error('Failed to parse or save customer data:', e.message);
