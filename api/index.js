@@ -423,23 +423,28 @@ async function sendWhatsAppMessage(toPhone, messageContent) {
 // --- NEW ISOLATED ENDPOINT FOR WEBSITE LEADS ---
 // This does not touch WhatsApp data at all.
 
+
 app.post('/api/website-lead', async (req, res) => {
     try {
         let name, phone, product, city, state, zipcode;
         
-        // Check if this is a Supabase Webhook payload
-        if (req.body && req.body.type === 'INSERT' && req.body.record) {
-            const record = req.body.record;
-            name = record.name;
-            phone = record.phone;
-            product = record.product;
-            city = record.city;
-            state = record.state;
-            zipcode = record.zipcode;
-        } else {
-            // Standard frontend fetch payload
-            ({ name, phone, product, city, state, zipcode } = req.body);
+        // Standard frontend fetch payload
+        ({ name, phone, product, city, state, zipcode } = req.body);
+        
+        // 1. Bypass RLS and force-save to Supabase using Service Role Key
+        let insertedId = null;
+        if (supabase) {
+            console.log('Force saving to Supabase...');
+            const { data, error } = await supabase.from('inquiries').insert([{
+                name, phone, product, city, state, zipcode, source: 'success'
+            }]).select();
+            
+            if (error) console.error('Supabase Force Insert Error:', error);
+            if (data && data[0]) insertedId = data[0].id;
         }
+
+        // 2. Push to Odoo CRM
+
 
         
         const ODOO_URL = "https://v1.viducrm.com";
