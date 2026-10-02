@@ -420,4 +420,106 @@ async function sendWhatsAppMessage(toPhone, messageContent) {
     }
 }
 
+// --- NEW ISOLATED ENDPOINT FOR WEBSITE LEADS ---
+// This does not touch WhatsApp data at all.
+app.post('/api/website-lead', async (req, res) => {
+    try {
+        const { name, phone, product, city, state, zipcode } = req.body;
+        
+        const ODOO_URL = "https://v1.viducrm.com";
+        const ODOO_DB = "vicrm_prd_17";
+        const ODOO_LOGIN = "jaf010@jayambe.net";
+        const ODOO_API_KEY = "824e7ef8e28156d5b0137ae5ede2d09129e2f371";
+
+        console.log("Authenticating with ViduCRM (Website Lead)...");
+        
+        const authXml = `<?xml version="1.0"?>
+        <methodCall>
+            <methodName>authenticate</methodName>
+            <params>
+                <param><value><string>${ODOO_DB}</string></value></param>
+                <param><value><string>${ODOO_LOGIN}</string></value></param>
+                <param><value><string>${ODOO_API_KEY}</string></value></param>
+                <param><value><struct></struct></value></param>
+            </params>
+        </methodCall>`;
+        
+        const authRes = await fetch(`${ODOO_URL}/xmlrpc/2/common`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/xml' },
+            body: authXml
+        });
+        
+        const authText = await authRes.text();
+        const uidMatch = authText.match(/<int>(\d+)<\/int>/);
+        
+        if (uidMatch && uidMatch[1]) {
+            const uid = uidMatch[1];
+            
+            const machineInterest = product || 'Unknown Machine';
+            const description = `Phone: ${phone || 'N/A'}\nInterested In: ${machineInterest}\nCity: ${city || 'N/A'}\nState: ${state || 'N/A'}\nPincode: ${zipcode || 'N/A'}`;
+            const leadName = `Website Lead: ${name || 'Unknown'} - ${machineInterest}`;
+            
+            const leadXml = `<?xml version="1.0"?>
+            <methodCall>
+                <methodName>execute_kw</methodName>
+                <params>
+                    <param><value><string>${ODOO_DB}</string></value></param>
+                    <param><value><int>${uid}</int></value></param>
+                    <param><value><string>${ODOO_API_KEY}</string></value></param>
+                    <param><value><string>crm.lead</string></value></param>
+                    <param><value><string>create</string></value></param>
+                    <param>
+                        <value>
+                            <array>
+                                <data>
+                                    <value>
+                                        <struct>
+                                            <member>
+                                                <name>name</name>
+                                                <value><string>${leadName}</string></value>
+                                            </member>
+                                            <member>
+                                                <name>description</name>
+                                                <value><string>${description}</string></value>
+                                            </member>
+                                            <member>
+                                                <name>contact_name</name>
+                                                <value><string>${name || ''}</string></value>
+                                            </member>
+                                            <member>
+                                                <name>city</name>
+                                                <value><string>${city || ''}</string></value>
+                                            </member>
+                                            <member>
+                                                <name>phone</name>
+                                                <value><string>${phone || ''}</string></value>
+                                            </member>
+                                        </struct>
+                                    </value>
+                                </data>
+                            </array>
+                        </value>
+                    </param>
+                </params>
+            </methodCall>`;
+            
+            const leadRes = await fetch(`${ODOO_URL}/xmlrpc/2/object`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/xml' },
+                body: leadXml
+            });
+            
+            const leadText = await leadRes.text();
+            console.log("Successfully pushed website lead to Odoo:", leadText);
+            res.status(200).json({ success: true, message: "Lead sent to Odoo CRM" });
+        } else {
+            throw new Error("Odoo Authentication Failed");
+        }
+    } catch (error) {
+        console.error("Website Lead Odoo Error:", error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 module.exports = app;
