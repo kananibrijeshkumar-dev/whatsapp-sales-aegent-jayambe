@@ -422,9 +422,25 @@ async function sendWhatsAppMessage(toPhone, messageContent) {
 
 // --- NEW ISOLATED ENDPOINT FOR WEBSITE LEADS ---
 // This does not touch WhatsApp data at all.
+
 app.post('/api/website-lead', async (req, res) => {
     try {
-        const { name, phone, product, city, state, zipcode } = req.body;
+        let name, phone, product, city, state, zipcode;
+        
+        // Check if this is a Supabase Webhook payload
+        if (req.body && req.body.type === 'INSERT' && req.body.record) {
+            const record = req.body.record;
+            name = record.name;
+            phone = record.phone;
+            product = record.product;
+            city = record.city;
+            state = record.state;
+            zipcode = record.zipcode;
+        } else {
+            // Standard frontend fetch payload
+            ({ name, phone, product, city, state, zipcode } = req.body);
+        }
+
         
         const ODOO_URL = "https://v1.viducrm.com";
         const ODOO_DB = "vicrm_prd_17";
