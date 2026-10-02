@@ -159,17 +159,20 @@ app.post('/webhook', async (req, res) => {
                 let aiResponse = await generateAIResponse(fromPhone, msgBody);
 
                 // Extract customer data if AI found any
-                const dataMatch = aiResponse.match(/\[DATA:\s*(\{.*?\})\s*\]/);
+                const dataMatch = aiResponse.match(/\[DATA:\s*(\{.*?\})\s*\]/s);
                 if (dataMatch && supabase) {
                     try {
                         const extractedData = JSON.parse(dataMatch[1]);
                         const updatePayload = {};
                         if (extractedData.name) updatePayload.name = extractedData.name;
                         if (extractedData.city) updatePayload.city = extractedData.city;
+                        if (extractedData.state) updatePayload.state = extractedData.state;
                         if (extractedData.pincode) updatePayload.pincode = extractedData.pincode;
+                        if (extractedData.machine) updatePayload.machine = extractedData.machine;
                         
                         if (Object.keys(updatePayload).length > 0) {
-                            await supabase.from('whatsapp_customers').update(updatePayload).eq('phone', fromPhone);
+                            const { error } = await supabase.from('whatsapp_customers').update(updatePayload).eq('phone', fromPhone);
+                            if (error) console.error("Supabase Update Error:", error.message);
                             console.log(`Updated customer data in Supabase:`, updatePayload);
                         }
 
