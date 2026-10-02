@@ -167,8 +167,7 @@ app.post('/webhook', async (req, res) => {
                         if (extractedData.name) updatePayload.name = extractedData.name;
                         if (extractedData.city) updatePayload.City = extractedData.city;
                         if (extractedData.state) updatePayload.state = extractedData.state;
-                        if (extractedData.pincode) updatePayload.pincode = extractedData.pincode;
-                        if (extractedData.machine) updatePayload.machine = extractedData.machine;
+                        if (extractedData.pincode) updatePayload.Pincode = extractedData.pincode;
                         
                         if (Object.keys(updatePayload).length > 0) {
                             const { error } = await supabase.from('whatsapp_customers').update(updatePayload).eq('phone', fromPhone);
