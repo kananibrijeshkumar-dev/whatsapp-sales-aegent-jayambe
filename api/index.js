@@ -173,63 +173,95 @@ app.post('/webhook', async (req, res) => {
                             console.log(`Updated customer data in Supabase:`, updatePayload);
                         }
 
-                        // --- NATIVE ODOO (VIDUCRM) JSON-RPC INTEGRATION ---
+                        // --- NATIVE ODOO (VIDUCRM) XML-RPC INTEGRATION ---
                         const ODOO_URL = "https://v1.viducrm.com";
                         const ODOO_DB = "vicrm_prd_17";
                         const ODOO_LOGIN = "jaf010@jayambe.net";
                         const ODOO_API_KEY = "824e7ef8e28156d5b0137ae5ede2d09129e2f371";
                         
-                        if (true) {
-                            try {
-                                console.log("Authenticating with ViduCRM...");
-                                const authRes = await fetch(`${ODOO_URL}/web/session/authenticate`, {
-                                    method: "POST",
-                                    headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({
-                                        jsonrpc: "2.0",
-                                        params: { db: ODOO_DB, login: ODOO_LOGIN, password: ODOO_API_KEY }
-                                    })
+                        try {
+                            console.log("Authenticating with ViduCRM via XML-RPC...");
+                            
+                            const authXml = `<?xml version="1.0"?>
+                            <methodCall>
+                                <methodName>authenticate</methodName>
+                                <params>
+                                    <param><value><string>${ODOO_DB}</string></value></param>
+                                    <param><value><string>${ODOO_LOGIN}</string></value></param>
+                                    <param><value><string>${ODOO_API_KEY}</string></value></param>
+                                    <param><value><struct></struct></value></param>
+                                </params>
+                            </methodCall>`;
+                            
+                            const authRes = await fetch(`${ODOO_URL}/xmlrpc/2/common`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'text/xml' },
+                                body: authXml
+                            });
+                            
+                            const authText = await authRes.text();
+                            const uidMatch = authText.match(/<int>(\d+)<\/int>/);
+                            
+                            if (uidMatch && uidMatch[1]) {
+                                const uid = uidMatch[1];
+                                console.log("Successfully Authenticated! UID:", uid);
+                                
+                                const description = `Phone: ${fromPhone}\nCity: ${extractedData.city || 'N/A'}\nState: ${extractedData.state || 'N/A'}\nPincode: ${extractedData.pincode || 'N/A'}`;
+                                const leadName = `WhatsApp Lead: ${extractedData.name || 'Unknown'}`;
+                                
+                                const leadXml = `<?xml version="1.0"?>
+                                <methodCall>
+                                    <methodName>execute_kw</methodName>
+                                    <params>
+                                        <param><value><string>${ODOO_DB}</string></value></param>
+                                        <param><value><int>${uid}</int></value></param>
+                                        <param><value><string>${ODOO_API_KEY}</string></value></param>
+                                        <param><value><string>crm.lead</string></value></param>
+                                        <param><value><string>create</string></value></param>
+                                        <param>
+                                            <value>
+                                                <array>
+                                                    <data>
+                                                        <value>
+                                                            <struct>
+                                                                <member>
+                                                                    <name>name</name>
+                                                                    <value><string>${leadName}</string></value>
+                                                                </member>
+                                                                <member>
+                                                                    <name>description</name>
+                                                                    <value><string>${description}</string></value>
+                                                                </member>
+                                                                <member>
+                                                                    <name>contact_name</name>
+                                                                    <value><string>${extractedData.name || ''}</string></value>
+                                                                </member>
+                                                                <member>
+                                                                    <name>city</name>
+                                                                    <value><string>${extractedData.city || ''}</string></value>
+                                                                </member>
+                                                            </struct>
+                                                        </value>
+                                                    </data>
+                                                </array>
+                                            </value>
+                                        </param>
+                                    </params>
+                                </methodCall>`;
+                                
+                                const leadRes = await fetch(`${ODOO_URL}/xmlrpc/2/object`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'text/xml' },
+                                    body: leadXml
                                 });
                                 
-                                const authData = await authRes.json();
-                                if (authData.error || !authData.result || !authData.result.session_id) {
-                                    console.error("ViduCRM Authentication Failed:", authData.error || authData);
-                                } else {
-                                    const sessionId = "session_id=" + authData.result.session_id;
-                                    console.log("Creating Lead in ViduCRM...");
-                                    
-                                    const leadRes = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
-                                        method: "POST",
-                                        headers: { 
-                                            "Content-Type": "application/json",
-                                            "Cookie": sessionId
-                                        },
-                                        body: JSON.stringify({
-                                            jsonrpc: "2.0",
-                                            params: {
-                                                model: "crm.lead",
-                                                method: "create",
-                                                args: [[{
-                                                    name: `WhatsApp Lead: ${extractedData.name || 'Unknown'}`,
-                                                    contact_name: extractedData.name || '',
-                                                    city: extractedData.city || '',
-                                                    description: `Phone: ${fromPhone}\nCity: ${extractedData.city || 'N/A'}\nState: ${extractedData.state || 'N/A'}\nPincode: ${extractedData.pincode || 'N/A'}`
-                                                }]],
-                                                kwargs: {}
-                                            }
-                                        })
-                                    });
-                                    
-                                    const leadResult = await leadRes.json();
-                                    if (leadResult.error) {
-                                        console.error("Failed to create lead in ViduCRM:", leadResult.error);
-                                    } else {
-                                        console.log("Successfully created Lead in ViduCRM! Lead ID:", leadResult.result);
-                                    }
-                                }
-                            } catch (e) {
-                                console.error("Error communicating with ViduCRM:", e);
+                                const leadText = await leadRes.text();
+                                console.log("Lead Creation XML Response:", leadText);
+                            } else {
+                                console.error("XML-RPC Auth Failed:", authText);
                             }
+                        } catch (e) {
+                            console.error("XML-RPC Error:", e.message);
                         }
                     } catch (e) {
                         console.error('Failed to parse or save customer data:', e.message);
