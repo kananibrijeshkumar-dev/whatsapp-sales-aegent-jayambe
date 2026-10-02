@@ -330,7 +330,7 @@ app.post('/api/followup', async (req, res) => {
             return res.sendStatus(400);
         }
 
-        const followUpMessage = "Hi! This is Sanjay from Jay Ambe Food Machinery following up. Did our sales team get in touch with you? Let me know if you need any more help!";
+        const followUpMessage = "Hello! This is a quick follow-up from Jay Shree Ambe Food Machinery. Have you spoken with our support or sales team yet? (Please reply Yes or No)";
         
         await sendWhatsAppMessage(toPhone, followUpMessage);
         
