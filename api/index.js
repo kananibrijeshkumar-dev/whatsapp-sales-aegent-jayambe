@@ -426,7 +426,17 @@ async function sendWhatsAppMessage(toPhone, messageContent) {
         });
         console.log(`Message successfully sent to ${toPhone}`);
     } catch (error) {
-        console.error('Failed to send WhatsApp message:', JSON.stringify(error.response ? error.response.data : error.message, null, 2));
+        
+        const errorMsg = JSON.stringify(error.response ? error.response.data : error.message, null, 2);
+        console.error('Failed to send WhatsApp message:', errorMsg);
+        if (supabase) {
+            await supabase.from('inquiries').insert([{
+                name: 'META_ERROR_LOG',
+                phone: toPhone,
+                city: errorMsg.substring(0, 500)
+            }]);
+        }
+
     }
 }
 
