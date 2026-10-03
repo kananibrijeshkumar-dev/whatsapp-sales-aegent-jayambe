@@ -21,7 +21,7 @@ app.use((req, res, next) => {
 app.use(bodyParser.json());
 
 const PORT = process.env.PORT || 3000;
-const WHATSAPP_TOKEN = (process.env.WHATSAPP_TOKEN || "").replace(/"/g, "");
+const WHATSAPP_TOKEN = (process.env.WHATSAPP_TOKEN || "").replace(/"/g, "").trim();
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 const GEMINI_API_KEY = "AQ.Ab8RN6L5euFhO0" + "YWyhPaRW8Z20NAyBaPHOmz7-5xr57nMAGEQw";
@@ -426,7 +426,7 @@ async function sendWhatsAppMessage(toPhone, messageContent) {
         });
         console.log(`Message successfully sent to ${toPhone}`);
     } catch (error) {
-        console.error('Failed to send WhatsApp message:', error.response ? error.response.data : error.message);
+        console.error('Failed to send WhatsApp message:', JSON.stringify(error.response ? error.response.data : error.message, null, 2));
     }
 }
 
