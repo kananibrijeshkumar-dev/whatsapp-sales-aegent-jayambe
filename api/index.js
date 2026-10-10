@@ -2,10 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const axios = require('axios');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { Client } = require("@upstash/qstash");
 const { createClient } = require('@supabase/supabase-js');
-const systemPrompt = require('./systemPrompt');
 
 const app = express();
 
@@ -24,50 +22,35 @@ const PORT = process.env.PORT || 3000;
 const WHATSAPP_TOKEN = (process.env.WHATSAPP_TOKEN || "").replace(/"/g, "").trim();
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
-const GEMINI_API_KEY = "AQ.Ab8RN6L5euFhO0" + "YWyhPaRW8Z20NAyBaPHOmz7-5xr57nMAGEQw";
 const QSTASH_TOKEN = process.env.QSTASH_TOKEN;
-const SUPABASE_URL = "https://uosqmchlfvvevvdmhozi.supabase.co";
-const SUPABASE_KEY = "sb_secret_" + "Jc084cONTCwg2Js" + "-6U00lg_f5nj8T9v";
+const SUPABASE_URL = process.env.SUPABASE_URL || "https://uosqmchlfvvevvdmhozi.supabase.co";
+const SUPABASE_KEY = process.env.SUPABASE_KEY || ("sb_secret_" + "Jc084cONTCwg2Js" + "-6U00lg_f5nj8T9v");
 
 let supabase = null;
 if (SUPABASE_URL && SUPABASE_KEY) {
     supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 }
 
-// Initialize QStash
 const qstashClient = new Client({ 
     token: QSTASH_TOKEN || "mock_token",
     baseUrl: process.env.QSTASH_URL || "https://qstash-us-east-1.upstash.io"
 });
 
-// Initialize Gemini
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({
-    model: "gemini-3.5-flash-lite",
-    systemInstruction: systemPrompt,
-    generationConfig: {
-        temperature: 0.1 // Strict temperature to prevent hallucination
-    }
-});
-
-// In-memory conversation history (very basic, for short-term memory)
+// Memory store for the interactive menu state
 const userSessions = {};
 const processedMessages = new Set();
 
-// Root endpoint for health check
 app.get('/', (req, res) => {
-    res.send('Jayambe WhatsApp AI Agent is running!');
+    res.send('Jayambe WhatsApp Interactive Agent is running!');
 });
 
-// 1. Webhook Verification (Required by Meta to connect the webhook)
+// 1. Webhook Verification
 app.get('/webhook', (req, res) => {
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
-
     if (mode && token) {
         if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-            console.log('WEBHOOK_VERIFIED');
             res.status(200).send(challenge);
         } else {
             res.sendStatus(403);
@@ -77,482 +60,310 @@ app.get('/webhook', (req, res) => {
     }
 });
 
-
-// 3. GitHub Actions Cron Endpoint for 1-hour follow-up
-app.post('/webhook-cron', async (req, res) => {
-    try {
-        if (!supabase) return res.status(500).send("No Supabase configured");
-        
-        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-        const twoHoursAgo = new Date(Date.now() - 120 * 60 * 1000).toISOString();
-        
-        const { data: customers, error } = await supabase
-            .from('whatsapp_customers')
-            .select('*')
-            .lt('last_message', oneHourAgo)
-            .gt('last_message', twoHoursAgo);
-            
-        if (customers && customers.length > 0) {
-            for (const customer of customers) {
-                const followUpMessage = "Hi! This is Sanjay from Jay Ambe Food Machinery following up. Did our sales team get in touch with you? Let me know if you need any more help!";
-                await sendWhatsAppMessage(customer.phone, followUpMessage);
-                
-                // Prevent duplicate follow-ups by setting last_message to year 2000
-                await supabase.from('whatsapp_customers').upsert({ phone: customer.phone, last_message: '2000-01-01T00:00:00.000Z' });
-            }
-        }
-        res.sendStatus(200);
-    } catch (err) {
-        console.error("Cron Error:", err);
-        res.sendStatus(500);
-    }
-});
-
-// 2. Receiving Messages & Replying
-
+// 2. Main Webhook Handler
 app.post('/webhook', async (req, res) => {
     try {
         const body = req.body;
-        console.log("=== INCOMING WEBHOOK ===");
-        console.log(JSON.stringify(body, null, 2));
+        if (body.object && body.entry && body.entry[0].changes && body.entry[0].changes[0] && body.entry[0].changes[0].value.messages && body.entry[0].changes[0].value.messages[0]) {
+            const messageObj = body.entry[0].changes[0].value.messages[0];
+            const messageId = messageObj.id;
 
-        // Check if this is a WhatsApp status update or a message
-        if (body.object) {
-            if (
-                body.entry &&
-                body.entry[0].changes &&
-                body.entry[0].changes[0] &&
-                body.entry[0].changes[0].value.messages &&
-                body.entry[0].changes[0].value.messages[0]
-            ) {
-                const messageObj = body.entry[0].changes[0].value.messages[0];
+            if (processedMessages.has(messageId)) {
+                return res.sendStatus(200);
+            }
+            processedMessages.add(messageId);
+            setTimeout(() => processedMessages.delete(messageId), 120000); // clear deduplication cache
 
-                // We only handle text messages in this basic version
-                if (messageObj.type !== 'text') {
-                    res.sendStatus(200);
-                    return;
+            const fromPhone = messageObj.from;
+            let incomingText = '';
+            let interactiveId = '';
+
+            if (messageObj.type === 'text') {
+                incomingText = messageObj.text.body;
+            } else if (messageObj.type === 'interactive') {
+                if (messageObj.interactive.type === 'button_reply') {
+                    interactiveId = messageObj.interactive.button_reply.id;
+                    incomingText = messageObj.interactive.button_reply.title;
+                } else if (messageObj.interactive.type === 'list_reply') {
+                    interactiveId = messageObj.interactive.list_reply.id;
+                    incomingText = messageObj.interactive.list_reply.title;
                 }
+            } else {
+                return res.sendStatus(200);
+            }
 
-                const messageId = messageObj.id;
+            // Initialize State for this user
+            if (!userSessions[fromPhone]) {
+                userSessions[fromPhone] = { step: 'START', data: {} };
+            }
+            let session = userSessions[fromPhone];
 
-                // DEDUPLICATION: Prevent Meta from processing retries multiple times
-                if (processedMessages.has(messageId)) {
-                    console.log("Duplicate Webhook Retry Ignored:", messageId);
-                    return res.sendStatus(200);
-                }
-                processedMessages.add(messageId);
-                setTimeout(() => processedMessages.delete(messageId), 120000); // Clear after 2 mins
+            console.log(`[STATE: ${session.step}] Message from ${fromPhone}: ${incomingText} (InteractiveID: ${interactiveId})`);
 
-                const fromPhone = messageObj.from; // Customer's phone number
-                const msgBody = messageObj.text ? messageObj.text.body : "[User sent media/audio. Please tell them to text instead]";
-
-                console.log(`Received message from ${fromPhone}: ${msgBody}`);
-
-                // Save to Supabase CRM
-                if (supabase) {
-                    try {
-                        const { data: existingCustomer } = await supabase.from('whatsapp_customers').select('phone').eq('phone', fromPhone).maybeSingle();
-                        if (existingCustomer) {
-                            await supabase.from('whatsapp_customers').update({ last_message: new Date() }).eq('phone', fromPhone);
-                        } else {
-                            await supabase.from('whatsapp_customers').insert({ phone: fromPhone, last_message: new Date() });
-                        }
-                        console.log(`Saved ${fromPhone} to Supabase`);
-                    } catch (dbError) {
-                        console.error('Supabase Error:', dbError.message);
-                    }
-                }
-
-                // Removed dummy webhook. Webhook will now fire natively to Odoo JSON-RPC on lead generation.
-
-                // Generate AI Response using the lightning-fast Lite model
-                let aiResponse = await generateAIResponse(fromPhone, msgBody);
-
-                // Extract customer data if AI found any
-                const dataMatch = aiResponse.match(/\[DATA:\s*(\{.*?\})\s*\]/s);
-                if (dataMatch && supabase) {
-                    try {
-                        const extractedData = JSON.parse(dataMatch[1]);
-                        const updatePayload = {};
-                        if (extractedData.name) updatePayload.name = extractedData.name;
-                        if (extractedData.city) updatePayload.City = extractedData.city;
-                        if (extractedData.state) updatePayload.state = extractedData.state;
-                        if (extractedData.pincode) updatePayload.Pincode = extractedData.pincode;
-                        
-                        if (Object.keys(updatePayload).length > 0) {
-                            const { error } = await supabase.from('whatsapp_customers').update(updatePayload).eq('phone', fromPhone);
-                            if (error) console.error("Supabase Update Error:", error.message);
-                            console.log(`Updated customer data in Supabase:`, updatePayload);
-                        }
-
-                        // --- NATIVE ODOO (VIDUCRM) XML-RPC INTEGRATION ---
-                        const ODOO_URL = "https://v1.viducrm.com";
-                        const ODOO_DB = "vicrm_prd_17";
-                        const ODOO_LOGIN = "jaf010@jayambe.net";
-                        const ODOO_API_KEY = "824e7ef8e28156d5b0137ae5ede2d09129e2f371";
-                        
-                        try {
-                            console.log("Authenticating with ViduCRM via XML-RPC...");
-                            
-                            const authXml = `<?xml version="1.0"?>
-                            <methodCall>
-                                <methodName>authenticate</methodName>
-                                <params>
-                                    <param><value><string>${ODOO_DB}</string></value></param>
-                                    <param><value><string>${ODOO_LOGIN}</string></value></param>
-                                    <param><value><string>${ODOO_API_KEY}</string></value></param>
-                                    <param><value><struct></struct></value></param>
-                                </params>
-                            </methodCall>`;
-                            
-                            const authRes = await fetch(`${ODOO_URL}/xmlrpc/2/common`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'text/xml' },
-                                body: authXml
-                            });
-                            
-                            const authText = await authRes.text();
-                            const uidMatch = authText.match(/<int>(\d+)<\/int>/);
-                            
-                            if (uidMatch && uidMatch[1]) {
-                                const uid = uidMatch[1];
-                                console.log("Successfully Authenticated! UID:", uid);
-                                
-                                const machineInterest = extractedData.machine || 'Unknown Machine';
-                                const description = `Phone: ${fromPhone}\nInterested In: ${machineInterest}\nCity: ${extractedData.city || 'N/A'}\nState: ${extractedData.state || 'N/A'}\nPincode: ${extractedData.pincode || 'N/A'}`;
-                                const leadName = `WhatsApp Lead: ${extractedData.name || 'Unknown'} - ${machineInterest}`;
-                                
-                                const leadXml = `<?xml version="1.0"?>
-                                <methodCall>
-                                    <methodName>execute_kw</methodName>
-                                    <params>
-                                        <param><value><string>${ODOO_DB}</string></value></param>
-                                        <param><value><int>${uid}</int></value></param>
-                                        <param><value><string>${ODOO_API_KEY}</string></value></param>
-                                        <param><value><string>crm.lead</string></value></param>
-                                        <param><value><string>create</string></value></param>
-                                        <param>
-                                            <value>
-                                                <array>
-                                                    <data>
-                                                        <value>
-                                                            <struct>
-                                                                <member>
-                                                                    <name>name</name>
-                                                                    <value><string>${leadName}</string></value>
-                                                                </member>
-                                                                <member>
-                                                                    <name>description</name>
-                                                                    <value><string>${description}</string></value>
-                                                                </member>
-                                                                <member>
-                                                                    <name>contact_name</name>
-                                                                    <value><string>${extractedData.name || ''}</string></value>
-                                                                </member>
-                                                                <member>
-                                                                    <name>city</name>
-                                                                    <value><string>${extractedData.city || ''}</string></value>
-                                                                </member>
-                                                                <member>
-                                                                    <name>phone</name>
-                                                                    <value><string>${fromPhone}</string></value>
-                                                                </member>
-                                                                <member>
-                                                                    <name>mobile</name>
-                                                                    <value><string>${fromPhone}</string></value>
-                                                                </member>
-                                                                <member>
-                                                                    <name>zip</name>
-                                                                    <value><string>${extractedData.pincode || ''}</string></value>
-                                                                </member>
-                                                            </struct>
-                                                        </value>
-                                                    </data>
-                                                </array>
-                                            </value>
-                                        </param>
-                                    </params>
-                                </methodCall>`;
-                                
-                                const leadRes = await fetch(`${ODOO_URL}/xmlrpc/2/object`, {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'text/xml' },
-                                    body: leadXml
-                                });
-                                
-                                const leadText = await leadRes.text();
-                                console.log("Lead Creation XML Response:", leadText);
-                            } else {
-                                console.error("XML-RPC Auth Failed:", authText);
-                            }
-                        } catch (e) {
-                            console.error("XML-RPC Error:", e.message);
-                        }
-                    } catch (e) {
-                        console.error('Failed to parse or save customer data:', e.message);
-                    }
-                    // Remove the hidden tag so the customer doesn't see it
-                    aiResponse = aiResponse.replace(dataMatch[0], '').trim();
-                }
-
-                // Send reply back to WhatsApp
-                await sendWhatsAppMessage(fromPhone, aiResponse);
-                return res.status(200).send({ debug_reply: aiResponse, SUPA_URL: process.env.SUPABASE_URL, SUPA_KEY: (process.env.SUPABASE_KEY || "").substring(0,10) });
+            // --- STATE MACHINE FLOW ---
+            if (session.step === 'AWAITING_DETAILS' && !interactiveId) {
+                // User provided Name, City, State
+                session.data.details = incomingText;
                 
-                // Schedule 1-hour follow up via QStash
-                if (QSTASH_TOKEN) {
-                    try {
-                        const hostUrl = req.headers.host ? `https://${req.headers.host}` : "https://jayambefoodmachinery.com"; // Fallback if host not found
-                        
-                        const qstashUrl = process.env.QSTASH_URL || "https://qstash-us-east-1.upstash.io";
-                        const response = await axios({
-                            method: 'POST',
-                            url: `${qstashUrl}/v2/publish/${hostUrl}/api/followup`,
-                            headers: {
-                                'Authorization': `Bearer ${QSTASH_TOKEN}`,
-                                'Content-Type': 'application/json',
-                                'Upstash-Delay': '1h'
-                            },
-                            data: { phone: fromPhone }
-                        });
-                        console.log(`Scheduled 1h follow-up via REST API:`, response.data);
-                    } catch (e) {
-                        console.log("QStash schedule error:", e.message);
-                    }
+                // Push to Odoo CRM
+                await pushToOdoo(fromPhone, session.data, incomingText);
+
+                // Send Final Message
+                await sendWhatsAppText(fromPhone, "Thank you for your inquiry. I am Anil Panchal (9925343582), Sales Executive of Jay Ambe Food Machinery. I will contact you as soon as possible.");
+                
+                // Reset session so they can start over if they message again later
+                delete userSessions[fromPhone];
+            } 
+            else if (interactiveId) {
+                // User clicked a button or list option
+                if (interactiveId.startsWith('lang_')) {
+                    session.data.language = incomingText;
+                    session.step = 'PHASE';
+                    await sendInteractiveButton(fromPhone, "Which machine phase do you require?", [
+                        { id: 'phase_single', title: 'Single Phase' },
+                        { id: 'phase_three', title: 'Three Phase' }
+                    ]);
+                }
+                else if (interactiveId === 'phase_single') {
+                    await sendWhatsAppText(fromPhone, "We are sorry sir, our company does not make single phase machines. We only manufacture commercial and three phase machines.");
+                    // Optional: reset session or ask them to select again. Resetting for now.
+                    delete userSessions[fromPhone];
+                }
+                else if (interactiveId === 'phase_three') {
+                    session.data.phase = 'Three Phase';
+                    session.step = 'CATEGORY';
+                    await sendInteractiveList(fromPhone, "Please select the type of machine you are looking for:", "View Machines", [
+                        { id: 'cat_atta', title: 'Atta Chakki' },
+                        { id: 'cat_masala', title: 'Masala Chakki' },
+                        { id: 'cat_haldi', title: 'Haldi Grinding' },
+                        { id: 'cat_chilly', title: 'Chilly Grinding' }
+                    ]);
+                }
+                else if (interactiveId.startsWith('cat_')) {
+                    session.data.category = incomingText;
+                    session.step = 'SUBTYPE';
+                    await sendInteractiveButton(fromPhone, `What type of ${incomingText}?`, [
+                        { id: `type_std`, title: "Standard" },
+                        { id: `type_cyc`, title: "With Cyclone" },
+                        { id: `type_both`, title: "Or Both" }
+                    ]);
+                }
+                else if (interactiveId.startsWith('type_')) {
+                    session.data.type = incomingText;
+                    session.step = 'HP';
+                    await sendInteractiveList(fromPhone, "What capacity (HP) do you require?", "View HP Options", [
+                        { id: 'hp_5', title: '5 HP' },
+                        { id: 'hp_10', title: '10 HP' },
+                        { id: 'hp_15', title: '15 HP' },
+                        { id: 'hp_20', title: '20 HP' },
+                        { id: 'hp_25', title: '25 HP' },
+                        { id: 'hp_30', title: '30 HP' }
+                    ]);
+                }
+                else if (interactiveId.startsWith('hp_')) {
+                    session.data.hp = incomingText;
+                    session.step = 'AWAITING_DETAILS';
+                    await sendWhatsAppText(fromPhone, "Great! Please type your Name, City, and State below:");
                 }
             }
-            // Always return 200 OK to Meta so they don't retry the webhook
-            res.sendStatus(200);
-        } else {
-            res.sendStatus(404);
+            else {
+                // If it's just text and they are not in AWAITING_DETAILS, assume it's a new chat/greeting
+                session.step = 'LANG';
+                await sendInteractiveButton(fromPhone, "Welcome to Jay Ambe Food Machinery! Please choose your language:", [
+                    { id: 'lang_en', title: 'English' },
+                    { id: 'lang_hi', title: 'Hindi' },
+                    { id: 'lang_gu', title: 'Gujarati' }
+                ]);
+            }
         }
+        res.sendStatus(200);
     } catch (error) {
         console.error('Error processing webhook:', error.message);
         res.sendStatus(500);
     }
 });
 
-// 3. Follow-up Endpoint (Triggered by QStash after 1 hour)
-app.post('/api/followup', async (req, res) => {
+// Helper: Send Standard Text
+async function sendWhatsAppText(toPhone, textMsg) {
     try {
-        const body = req.body;
-        const toPhone = body.phone;
-        
-        if (!toPhone) {
-            return res.sendStatus(400);
-        }
-
-        const followUpMessage = "Hello! This is a quick follow-up from Jay Shree Ambe Food Machinery. Have you spoken with our support or sales team yet? (Please reply Yes or No)";
-        
-        await sendWhatsAppMessage(toPhone, followUpMessage);
-        
-        // Add to AI memory so it remembers Sanjay sent this
-        if (!userSessions[toPhone]) {
-            userSessions[toPhone] = [];
-        }
-        userSessions[toPhone].push({ role: "model", parts: [{ text: followUpMessage }] });
-
-        console.log(`Sent 1-hour follow-up to ${toPhone}`);
-        
-        res.sendStatus(200);
-    } catch (e) {
-        console.error("Followup error:", e);
-        res.sendStatus(500);
-    }
-});
-
-async function generateAIResponse(senderId, messageText) {
-    try {
-        if (!userSessions[senderId]) {
-            userSessions[senderId] = [];
-        }
-
-        const currentMessage = { role: "user", parts: [{ text: messageText }] };
-        const contents = [...userSessions[senderId], currentMessage];
-
-        // Using the global model configured with systemPrompt and strict temperature
-        const result = await model.generateContent({ contents });
-        const replyText = result.response.text();
-
-        // Save history
-        userSessions[senderId].push(currentMessage);
-        userSessions[senderId].push({ role: "model", parts: [{ text: replyText }] });
-
-        if (userSessions[senderId].length > 10) {
-            userSessions[senderId] = userSessions[senderId].slice(userSessions[senderId].length - 10);
-        }
-
-        return replyText;
-    } catch (error) {
-        console.error("AI Generation Error:", error.message);
-        return "SYSTEM ERROR: " + error.message + "\nPlease call us at +91 7201890711 for immediate assistance.";
-    }
-}
-
-async function sendWhatsAppMessage(toPhone, messageContent) {
-    try {
-        let payload = {
-            messaging_product: 'whatsapp',
-            to: toPhone,
-        };
-
-        // IMAGE SUPPORT: Check if the AI included a [IMAGE: url] tag
-        const imageMatch = messageContent.match(/\[IMAGE:\s*(https?:\/\/[^\]]+)\]/);
-
-        if (imageMatch) {
-            const imageUrl = imageMatch[1];
-            // Remove the image tag from the text to use as the caption
-            const textContent = messageContent.replace(imageMatch[0], '').trim();
-
-            payload.type = 'image';
-            payload.image = { link: imageUrl };
-
-            if (textContent) {
-                payload.image.caption = textContent;
-            }
-        } else {
-            payload.type = 'text';
-            payload.text = { body: messageContent };
-        }
-
         await axios({
             method: 'POST',
             url: `https://graph.facebook.com/v18.0/${PHONE_NUMBER_ID}/messages`,
-            data: payload,
-            headers: {
-                'Authorization': `Bearer ${WHATSAPP_TOKEN}`,
-                'Content-Type': 'application/json',
-            },
+            data: { messaging_product: 'whatsapp', to: toPhone, type: 'text', text: { body: textMsg } },
+            headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
         });
-        console.log(`Message successfully sent to ${toPhone}`);
-    } catch (error) {
-        
-        const errorMsg = JSON.stringify(error.response ? error.response.data : error.message, null, 2);
-        console.error('Failed to send WhatsApp message:', errorMsg);
-        if (supabase) {
-            await supabase.from('inquiries').insert([{
-                name: 'META_ERROR_LOG',
-                phone: toPhone,
-                city: errorMsg.substring(0, 500)
-            }]);
-        }
-
+    } catch (e) {
+        console.error('Error sending text:', e.response ? e.response.data : e.message);
     }
 }
 
-// --- NEW ISOLATED ENDPOINT FOR WEBSITE LEADS ---
-// This does not touch WhatsApp data at all.
-
-
-app.post('/api/website-lead', async (req, res) => {
+// Helper: Send Interactive Buttons (Max 3)
+async function sendInteractiveButton(toPhone, bodyText, buttons) {
     try {
-        let name, phone, product, city, state, zipcode;
-        
-        // Standard frontend fetch payload
-        ({ name, phone, product, city, state, zipcode } = req.body);
-        
-        // 1. Bypass RLS and force-save to Supabase using Service Role Key
-        let insertedId = null;
-        if (supabase) {
-            console.log('Force saving to Supabase...');
-            const { data, error } = await supabase.from('inquiries').insert([{
-                name, phone, product, city, state, zipcode, source: 'success'
-            }]).select();
-            
-            if (error) console.error('Supabase Force Insert Error:', error);
-            if (data && data[0]) insertedId = data[0].id;
-        }
+        const formattedButtons = buttons.map(b => ({ type: 'reply', reply: { id: b.id, title: b.title } }));
+        await axios({
+            method: 'POST',
+            url: `https://graph.facebook.com/v18.0/${PHONE_NUMBER_ID}/messages`,
+            data: {
+                messaging_product: 'whatsapp',
+                to: toPhone,
+                type: 'interactive',
+                interactive: {
+                    type: 'button',
+                    body: { text: bodyText },
+                    action: { buttons: formattedButtons }
+                }
+            },
+            headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
+        });
+    } catch (e) {
+        console.error('Error sending buttons:', e.response ? JSON.stringify(e.response.data) : e.message);
+    }
+}
 
-        // 2. Push to Odoo CRM
+// Helper: Send Interactive List (Up to 10)
+async function sendInteractiveList(toPhone, bodyText, buttonTitle, items) {
+    try {
+        const rows = items.map(i => ({ id: i.id, title: i.title }));
+        await axios({
+            method: 'POST',
+            url: `https://graph.facebook.com/v18.0/${PHONE_NUMBER_ID}/messages`,
+            data: {
+                messaging_product: 'whatsapp',
+                to: toPhone,
+                type: 'interactive',
+                interactive: {
+                    type: 'list',
+                    body: { text: bodyText },
+                    action: {
+                        button: buttonTitle,
+                        sections: [{ title: 'Options', rows: rows }]
+                    }
+                }
+            },
+            headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
+        });
+    } catch (e) {
+        console.error('Error sending list:', e.response ? JSON.stringify(e.response.data) : e.message);
+    }
+}
 
-
-        
+// Helper: Push WhatsApp Lead to Odoo CRM
+async function pushToOdoo(phone, sessionData, userDetailsText) {
+    try {
         const ODOO_URL = "https://v1.viducrm.com";
         const ODOO_DB = "vicrm_prd_17";
         const ODOO_LOGIN = "jaf010@jayambe.net";
         const ODOO_API_KEY = "824e7ef8e28156d5b0137ae5ede2d09129e2f371";
-
-        console.log("Authenticating with ViduCRM (Website Lead)...");
         
-        const authXml = `<?xml version="1.0"?>
+        const authXml = \`<?xml version="1.0"?>
         <methodCall>
             <methodName>authenticate</methodName>
             <params>
-                <param><value><string>${ODOO_DB}</string></value></param>
-                <param><value><string>${ODOO_LOGIN}</string></value></param>
-                <param><value><string>${ODOO_API_KEY}</string></value></param>
+                <param><value><string>\${ODOO_DB}</string></value></param>
+                <param><value><string>\${ODOO_LOGIN}</string></value></param>
+                <param><value><string>\${ODOO_API_KEY}</string></value></param>
                 <param><value><struct></struct></value></param>
             </params>
-        </methodCall>`;
+        </methodCall>\`;
         
-        const authRes = await fetch(`${ODOO_URL}/xmlrpc/2/common`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/xml' },
-            body: authXml
-        });
-        
+        const authRes = await fetch(\`\${ODOO_URL}/xmlrpc/2/common\`, { method: 'POST', headers: { 'Content-Type': 'text/xml' }, body: authXml });
         const authText = await authRes.text();
         const uidMatch = authText.match(/<int>(\d+)<\/int>/);
         
         if (uidMatch && uidMatch[1]) {
             const uid = uidMatch[1];
             
-            const machineInterest = product || 'Unknown Machine';
-            const description = `Phone: ${phone || 'N/A'}\nInterested In: ${machineInterest}\nCity: ${city || 'N/A'}\nState: ${state || 'N/A'}\nPincode: ${zipcode || 'N/A'}`;
-            const leadName = `Website Lead: ${name || 'Unknown'} - ${machineInterest}`;
+            // Extract the first word as a rough "Name" approximation
+            const parts = userDetailsText.split(/[,\\n\\- ]+/);
+            const contactName = parts[0] ? parts[0].trim() : 'Unknown';
             
-            const leadXml = `<?xml version="1.0"?>
+            const description = \`Phone: \${phone}\\nDetails Provided: \${userDetailsText}\\n\\n--- SELECTION ---\\nLanguage: \${sessionData.language}\\nPhase: \${sessionData.phase}\\nCategory: \${sessionData.category}\\nType: \${sessionData.type}\\nHP: \${sessionData.hp}\`;
+            const leadName = \`WhatsApp Lead: \${contactName} - \${sessionData.category} (\${sessionData.hp})\`;
+            
+            const leadXml = \`<?xml version="1.0"?>
             <methodCall>
                 <methodName>execute_kw</methodName>
                 <params>
-                    <param><value><string>${ODOO_DB}</string></value></param>
-                    <param><value><int>${uid}</int></value></param>
-                    <param><value><string>${ODOO_API_KEY}</string></value></param>
+                    <param><value><string>\${ODOO_DB}</string></value></param>
+                    <param><value><int>\${uid}</int></value></param>
+                    <param><value><string>\${ODOO_API_KEY}</string></value></param>
                     <param><value><string>crm.lead</string></value></param>
                     <param><value><string>create</string></value></param>
-                    <param>
-                        <value>
-                            <array>
-                                <data>
-                                    <value>
-                                        <struct>
-                                            <member>
-                                                <name>name</name>
-                                                <value><string>${leadName}</string></value>
-                                            </member>
-                                            <member>
-                                                <name>description</name>
-                                                <value><string>${description}</string></value>
-                                            </member>
-                                            <member>
-                                                <name>contact_name</name>
-                                                <value><string>${name || ''}</string></value>
-                                            </member>
-                                            <member>
-                                                <name>city</name>
-                                                <value><string>${city || ''}</string></value>
-                                            </member>
-                                            <member>
-                                                <name>phone</name>
-                                                <value><string>${phone || ''}</string></value>
-                                            </member>
-                                        </struct>
-                                    </value>
-                                </data>
-                            </array>
-                        </value>
-                    </param>
+                    <param><value><array><data><value><struct>
+                        <member><name>name</name><value><string>\${leadName}</string></value></member>
+                        <member><name>description</name><value><string>\${description}</string></value></member>
+                        <member><name>contact_name</name><value><string>\${contactName}</string></value></member>
+                        <member><name>phone</name><value><string>\${phone}</string></value></member>
+                        <member><name>mobile</name><value><string>\${phone}</string></value></member>
+                    </struct></value></data></array></value></param>
                 </params>
-            </methodCall>`;
+            </methodCall>\`;
             
-            const leadRes = await fetch(`${ODOO_URL}/xmlrpc/2/object`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/xml' },
-                body: leadXml
-            });
+            await fetch(\`\${ODOO_URL}/xmlrpc/2/object\`, { method: 'POST', headers: { 'Content-Type': 'text/xml' }, body: leadXml });
+            console.log("Successfully pushed WhatsApp lead to Odoo.");
+        }
+    } catch (e) {
+        console.error("XML-RPC Error:", e.message);
+    }
+}
+
+// Retain Website Lead API Endpoint intact
+app.post('/api/website-lead', async (req, res) => {
+    try {
+        let name, phone, product, city, state, zipcode;
+        ({ name, phone, product, city, state, zipcode } = req.body);
+        
+        if (supabase) {
+            const { data, error } = await supabase.from('inquiries').insert([{ name, phone, product, city, state, zipcode, source: 'success' }]).select();
+        }
+
+        const ODOO_URL = "https://v1.viducrm.com";
+        const ODOO_DB = "vicrm_prd_17";
+        const ODOO_LOGIN = "jaf010@jayambe.net";
+        const ODOO_API_KEY = "824e7ef8e28156d5b0137ae5ede2d09129e2f371";
+        
+        const authXml = \`<?xml version="1.0"?>
+        <methodCall>
+            <methodName>authenticate</methodName>
+            <params>
+                <param><value><string>\${ODOO_DB}</string></value></param>
+                <param><value><string>\${ODOO_LOGIN}</string></value></param>
+                <param><value><string>\${ODOO_API_KEY}</string></value></param>
+                <param><value><struct></struct></value></param>
+            </params>
+        </methodCall>\`;
+        
+        const authRes = await fetch(\`\${ODOO_URL}/xmlrpc/2/common\`, { method: 'POST', headers: { 'Content-Type': 'text/xml' }, body: authXml });
+        const authText = await authRes.text();
+        const uidMatch = authText.match(/<int>(\d+)<\/int>/);
+        
+        if (uidMatch && uidMatch[1]) {
+            const uid = uidMatch[1];
+            const machineInterest = product || 'Unknown Machine';
+            const description = \`Phone: \${phone || 'N/A'}\\nInterested In: \${machineInterest}\\nCity: \${city || 'N/A'}\\nState: \${state || 'N/A'}\\nPincode: \${zipcode || 'N/A'}\`;
+            const leadName = \`Website Lead: \${name || 'Unknown'} - \${machineInterest}\`;
             
-            const leadText = await leadRes.text();
-            console.log("Successfully pushed website lead to Odoo:", leadText);
+            const leadXml = \`<?xml version="1.0"?>
+            <methodCall>
+                <methodName>execute_kw</methodName>
+                <params>
+                    <param><value><string>\${ODOO_DB}</string></value></param>
+                    <param><value><int>\${uid}</int></value></param>
+                    <param><value><string>\${ODOO_API_KEY}</string></value></param>
+                    <param><value><string>crm.lead</string></value></param>
+                    <param><value><string>create</string></value></param>
+                    <param><value><array><data><value><struct>
+                        <member><name>name</name><value><string>\${leadName}</string></value></member>
+                        <member><name>description</name><value><string>\${description}</string></value></member>
+                        <member><name>contact_name</name><value><string>\${name || ''}</string></value></member>
+                        <member><name>city</name><value><string>\${city || ''}</string></value></member>
+                        <member><name>phone</name><value><string>\${phone || ''}</string></value></member>
+                    </struct></value></data></array></value></param>
+                </params>
+            </methodCall>\`;
+            
+            await fetch(\`\${ODOO_URL}/xmlrpc/2/object\`, { method: 'POST', headers: { 'Content-Type': 'text/xml' }, body: leadXml });
             res.status(200).json({ success: true, message: "Lead sent to Odoo CRM" });
         } else {
             throw new Error("Odoo Authentication Failed");
