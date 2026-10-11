@@ -45,39 +45,223 @@ const ODOO_DB = 'vicrm_prd_17';
 const ODOO_USER = 'jaf010@jayambe.net';
 const ODOO_PASS = '824e7ef8e28156d5b0137ae5ede2d09129e2f371';
 
-// Full Indian States Database (Numbered & Alphabetical A to Z)
-const STATES_PAGE_1 = [
-    { code: 'ap', num: 1, name_en: '1. Andhra Pradesh', name_hi: '1. आंध्र प्रदेश', name_gu: '1. આંધ્ર પ્રદેશ', cities_en: ['Visakhapatnam', 'Vijayawada', 'Guntur', 'Nellore', 'Kurnool', 'Rajahmundry', 'Tirupati'], cities_hi: ['विशाखापट्टनम', 'विजयवाड़ा', 'गुंटूर', 'नेल्लोर', 'कर्नूल', 'राजमुंदरी', 'तिरुपति'], cities_gu: ['વિશાખાપટ્ટનમ', 'વિજયવાડા', 'ગુંટુર', 'નેલ્લોર', 'કુર્નૂલ', 'રાજમુંદરી', 'તિરુપતિ'] },
-    { code: 'as', num: 2, name_en: '2. Assam', name_hi: '2. असम', name_gu: '2. અસમ', cities_en: ['Guwahati', 'Silchar', 'Dibrugarh', 'Jorhat', 'Nagaon', 'Tinsukia', 'Tezpur'], cities_hi: ['गुवाहाटी', 'सिलचर', 'डिब्रूगढ़', 'जोरहाट', 'नागांव', 'तिनसुकिया', 'तेजपुर'], cities_gu: ['ગુવાહાટી', 'સિલચર', 'ડિબ્રુગઢ', 'જોરહાટ', 'નાગાંવ', 'તિનસુકિયા', 'તેજપુર'] },
-    { code: 'br', num: 3, name_en: '3. Bihar', name_hi: '3. बिहार', name_gu: '3. બિહાર', cities_en: ['Patna', 'Gaya', 'Bhagalpur', 'Muzaffarpur', 'Purnia', 'Darbhanga', 'Arrah'], cities_hi: ['पटना', 'गया', 'भागलपुर', 'मुजफ्फरपुर', 'पूर्णिया', 'दरभंगा', 'आरा'], cities_gu: ['પટના', 'ગયા', 'ભાગલપુર', 'મુઝફ્ફરપુર', 'પૂર્ણિયા', 'દરભંગા', 'આરા'] },
-    { code: 'cg', num: 4, name_en: '4. Chhattisgarh', name_hi: '4. छत्तीसगढ़', name_gu: '4. છત્તીસગઢ', cities_en: ['Raipur', 'Bhilai', 'Bilaspur', 'Korba', 'Rajnandgaon', 'Jagdalpur', 'Raigarh'], cities_hi: ['रायपुर', 'भिलाई', 'बिलासपुर', 'कोरबा', 'राजनांदगांव', 'जगदलपुर', 'रायगढ़'], cities_gu: ['રાયપુર', 'ભિલાઈ', 'બિલાસપુર', 'કોરબા', 'રાજનાંદગાંવ', 'જગદલપુર', 'રાયગઢ'] },
-    { code: 'dl', num: 5, name_en: '5. Delhi', name_hi: '5. दिल्ली', name_gu: '5. દિલ્હી', cities_en: ['New Delhi', 'North Delhi', 'South Delhi', 'West Delhi', 'East Delhi', 'Rohini', 'Dwarka'], cities_hi: ['नई दिल्ली', 'उत्तर दिल्ली', 'दक्षिण दिल्ली', 'पश्चिम दिल्ली', 'पूर्वी दिल्ली', 'रोहिणी', 'द्वारका'], cities_gu: ['નવી દિલ્હી', 'ઉત્તર દિલ્હી', 'દક્ષિણ દિલ્હી', 'પશ્ચિમ દિલ્હી', 'પૂર્વ દિલ્હી', 'રોહિણી', 'દ્વારકા'] },
-    { code: 'ga', num: 6, name_en: '6. Goa', name_hi: '6. गोवा', name_gu: '6. ગોવા', cities_en: ['Panaji', 'Margao', 'Vasco da Gama', 'Mapusa', 'Ponda'], cities_hi: ['पणजी', 'मडगांव', 'वास्को', 'मापुसा', 'पोंडा'], cities_gu: ['પણજી', 'મડગાંવ', 'વાસ્કો', 'માપુસા', 'પોંડા'] },
-    { code: 'gj', num: 7, name_en: '7. Gujarat', name_hi: '7. गुजरात', name_gu: '7. ગુજરાત', cities_en: ['Ahmedabad', 'Surat', 'Vadodara', 'Rajkot', 'Bhavnagar', 'Jamnagar', 'Junagadh', 'Gandhinagar'], cities_hi: ['अहमदाबाद', 'सूरत', 'वडोदरा', 'राजकोट', 'भावनगर', 'जामनगर', 'जूनागढ़', 'गांधीनगर'], cities_gu: ['અમદાવાદ', 'સુરત', 'વડોદરા', 'રાજકોટ', 'ભાવનગર', 'જામનગર', 'જૂનાગઢ', 'ગાંધીનગર'] },
-    { code: 'hr', num: 8, name_en: '8. Haryana', name_hi: '8. हरियाणा', name_gu: '8. હરિયાણા', cities_en: ['Faridabad', 'Gurugram', 'Panipat', 'Ambala', 'Yamunanagar', 'Rohtak', 'Hisar', 'Karnal'], cities_hi: ['फरीदाबाद', 'गुरुग्राम', 'पानीपत', 'अंबाला', 'यमुनानगर', 'रोहतक', 'हिसार', 'करनाल'], cities_gu: ['ફરીદાબાદ', 'ગુરુગ્રામ', 'પાણીપત', 'અંબાલા', 'યમુનાનગર', 'રોહતક', 'હિસાર', 'કરનાલ'] },
-    { code: 'hp', num: 9, name_en: '9. Himachal Pradesh', name_hi: '9. हिमाचल प्रदेश', name_gu: '9. હિમાચલ પ્રદેશ', cities_en: ['Shimla', 'Dharamshala', 'Solan', 'Mandi', 'Baddi', 'Kullu', 'Bilaspur'], cities_hi: ['शिमला', 'धर्मशाला', 'सोलन', 'मंडी', 'बद्दी', 'कुल्लू', 'बिलासपुर'], cities_gu: ['શિમલા', 'ધર્મશાળા', 'સોલન', 'મંડી', 'બદ્દી', 'કુલ્લુ', 'બિલાસપુર'] }
-];
+// Comprehensive City-to-State Mapping for Automatic Detection
+const CITY_STATE_MAP = {
+    // Gujarat
+    'ahmedabad': { city: 'Ahmedabad', state: 'Gujarat' },
+    'અમદાવાદ': { city: 'અમદાવાદ', state: 'ગુજરાત' },
+    'अहमदाबाद': { city: 'अहमदाबाद', state: 'गुजरात' },
+    'surat': { city: 'Surat', state: 'Gujarat' },
+    'સુરત': { city: 'સુરત', state: 'ગુજરાત' },
+    'सूरत': { city: 'सूरत', state: 'गुजरात' },
+    'vadodara': { city: 'Vadodara', state: 'Gujarat' },
+    'વડોદરા': { city: 'વડોદરા', state: 'ગુજરાત' },
+    'rajkot': { city: 'Rajkot', state: 'Gujarat' },
+    'રાજકોટ': { city: 'રાજકોટ', state: 'ગુજરાત' },
+    'bhavnagar': { city: 'Bhavnagar', state: 'Gujarat' },
+    'ભાવનગર': { city: 'ભાવનગર', state: 'ગુજરાત' },
+    'jamnagar': { city: 'Jamnagar', state: 'Gujarat' },
+    'જામનગર': { city: 'જામનગર', state: 'ગુજરાત' },
+    'junagadh': { city: 'Junagadh', state: 'Gujarat' },
+    'જૂનાગઢ': { city: 'જૂનાગઢ', state: 'ગુજરાત' },
+    'gandhinagar': { city: 'Gandhinagar', state: 'Gujarat' },
+    'ગાંધીનગર': { city: 'ગાંધીનગર', state: 'ગુજરાત' },
+    'anand': { city: 'Anand', state: 'Gujarat' },
+    'morbi': { city: 'Morbi', state: 'Gujarat' },
+    'મોરબી': { city: 'મોરબી', state: 'ગુજરાત' },
+    'mehsana': { city: 'Mehsana', state: 'Gujarat' },
+    'મહેસાણા': { city: 'મહેસાણા', state: 'ગુજરાત' },
+    'bharuch': { city: 'Bharuch', state: 'Gujarat' },
+    'ભરૂચ': { city: 'ભરૂચ', state: 'ગુજરાત' },
+    'vapi': { city: 'Vapi', state: 'Gujarat' },
+    'વાપી': { city: 'વાપી', state: 'ગુજરાત' },
+    'valsad': { city: 'Valsad', state: 'Gujarat' },
+    'navsari': { city: 'Navsari', state: 'Gujarat' },
+    'chhota udepur': { city: 'Chhota Udepur', state: 'Gujarat' },
+    'chota udaipur': { city: 'Chhota Udepur', state: 'Gujarat' },
+    'godhra': { city: 'Godhra', state: 'Gujarat' },
+    'palanpur': { city: 'Palanpur', state: 'Gujarat' },
+    'patan': { city: 'Patan', state: 'Gujarat' },
+    'amreli': { city: 'Amreli', state: 'Gujarat' },
+    'botad': { city: 'Botad', state: 'Gujarat' },
+    'porbandar': { city: 'Porbandar', state: 'Gujarat' },
+    'bhuj': { city: 'Bhuj', state: 'Gujarat' },
+    'gandhidham': { city: 'Gandhidham', state: 'Gujarat' },
+    'dahod': { city: 'Dahod', state: 'Gujarat' },
+    'himmatnagar': { city: 'Himmatnagar', state: 'Gujarat' },
 
-const STATES_PAGE_2 = [
-    { code: 'jh', num: 10, name_en: '10. Jharkhand', name_hi: '10. झारखंड', name_gu: '10. ઝારખંડ', cities_en: ['Ranchi', 'Jamshedpur', 'Dhanbad', 'Bokaro', 'Deoghar', 'Hazaribagh', 'Giridih'], cities_hi: ['रांची', 'जमशेदपुर', 'धनबाद', 'बोकारो', 'देवघर', 'हजारीबाग', 'गिरिडीह'], cities_gu: ['રાંચી', 'જમશેદપુર', 'ધનબાદ', 'બોકારો', 'દેવઘર', 'હઝારીબાગ', 'ગિરિડીહ'] },
-    { code: 'ka', num: 11, name_en: '11. Karnataka', name_hi: '11. कर्नाटक', name_gu: '11. કર્ણાટક', cities_en: ['Bengaluru', 'Mysuru', 'Hubballi', 'Belagavi', 'Mangaluru', 'Davanagere', 'Ballari'], cities_hi: ['बेंगलुरु', 'मैसूरु', 'हुबली', 'बेलगावी', 'मंगलुरु', 'दावणगेरे', 'बेल्लारी'], cities_gu: ['બેંગલુરુ', 'મૈસુર', 'હુબળી', 'બેલગામ', 'મંગલોર', 'દાવણગેરે', 'બલ્લારી'] },
-    { code: 'kl', num: 12, name_en: '12. Kerala', name_hi: '12. केरल', name_gu: '12. કેરળ', cities_en: ['Thiruvananthapuram', 'Kochi', 'Kozhikode', 'Thrissur', 'Kollam', 'Palakkad', 'Kannur'], cities_hi: ['तिरुवनंतपुरम', 'कोच्चि', 'कोझिकोड', 'त्रिशूर', 'कोल्लम', 'पालक्काड़', 'कन्नूर'], cities_gu: ['તિરુવનંતપુરમ', 'કોચી', 'કોઝિકોડ', 'ત્રિશૂર', 'કોલ્લમ', 'પાલક્કડ', 'કન્નુર'] },
-    { code: 'mp', num: 13, name_en: '13. Madhya Pradesh', name_hi: '13. मध्य प्रदेश', name_gu: '13. મધ્ય પ્રદેશ', cities_en: ['Indore', 'Bhopal', 'Jabalpur', 'Gwalior', 'Ujjain', 'Sagar', 'Dewas', 'Satna'], cities_hi: ['इंदौर', 'भोपाल', 'जबलपुर', 'ग्वालियर', 'उज्जैन', 'सागर', 'देवास', 'सतना'], cities_gu: ['ઇન્દોર', 'ભોપાલ', 'જબલપુર', 'ગ્વાલિયર', 'ઉજ્જૈન', 'સાગર', 'દેવાસ', 'સતના'] },
-    { code: 'mh', num: 14, name_en: '14. Maharashtra', name_hi: '14. महाराष्ट्र', name_gu: '14. મહારાષ્ટ્ર', cities_en: ['Mumbai', 'Pune', 'Nagpur', 'Nashik', 'Aurangabad', 'Kolhapur', 'Solapur', 'Thane'], cities_hi: ['मुंबई', 'पुणे', 'नागपुर', 'नाशिक', 'औरंगाबाद', 'कोल्हापुर', 'सोलापुर', 'ठाणे'], cities_gu: ['મુંબઈ', 'પુણે', 'નાગપુર', 'નાશિક', 'ઔરંગાબાદ', 'કોલ્હાપુર', 'સોલાપુર', 'થાણે'] },
-    { code: 'od', num: 15, name_en: '15. Odisha', name_hi: '15. ओडिशा', name_gu: '15. ઓડિશા', cities_en: ['Bhubaneswar', 'Cuttack', 'Rourkela', 'Berhampur', 'Sambalpur', 'Puri', 'Balasore'], cities_hi: ['भुवनेश्वर', 'कटक', 'राउरकेला', 'बरहामपुर', 'संबलपुर', 'पुरी', 'बालेश्वर'], cities_gu: ['ભુવનેશ્વર', 'કટક', 'રાઉરકેલા', 'બરહામપુર', 'સંબલપુર', 'પુરી', 'બાલેશ્વર'] },
-    { code: 'pb', num: 16, name_en: '16. Punjab', name_hi: '16. पंजाब', name_gu: '16. પંજાબ', cities_en: ['Ludhiana', 'Amritsar', 'Jalandhar', 'Patiala', 'Bathinda', 'Mohali', 'Hoshiarpur'], cities_hi: ['लुधियाना', 'अमृतसर', 'जालंधर', 'पटियाला', 'बठिंडा', 'मोहाली', 'होशियारपुर'], cities_gu: ['લુધિયાણા', 'અમૃતસર', 'જલંધર', 'પટિયાલા', 'બઠિંડા', 'મોહાલી', 'હોશિયારપુર'] },
-    { code: 'rj', num: 17, name_en: '17. Rajasthan', name_hi: '17. राजस्थान', name_gu: '17. રાજસ્થાન', cities_en: ['Jaipur', 'Jodhpur', 'Kota', 'Bikaner', 'Udaipur', 'Ajmer', 'Bhilwara', 'Alwar'], cities_hi: ['जयपुर', 'जोधपुर', 'कोटा', 'बीकानेर', 'उदयपुर', 'अजमेर', 'भीलवाड़ा', 'अलवर'], cities_gu: ['જયપુર', 'જોધપુર', 'કોટા', 'બિકાનેર', 'ઉદયપુર', 'અજમેર', 'ભીલવાડા', 'અલવર'] }
-];
+    // Maharashtra
+    'mumbai': { city: 'Mumbai', state: 'Maharashtra' },
+    'મુંબઈ': { city: 'મુંબઈ', state: 'મહારાષ્ટ્ર' },
+    'मुंबई': { city: 'मुंबई', state: 'महाराष्ट्र' },
+    'pune': { city: 'Pune', state: 'Maharashtra' },
+    'પુણે': { city: 'પુણે', state: 'મહારાષ્ટ્ર' },
+    'पुणे': { city: 'पुणे', state: 'महाराष्ट्र' },
+    'nagpur': { city: 'Nagpur', state: 'Maharashtra' },
+    'નાગપુર': { city: 'નાગપુર', state: 'મહારાષ્ટ્ર' },
+    'नागपुर': { city: 'नागपुर', state: 'महाराष्ट्र' },
+    'nashik': { city: 'Nashik', state: 'Maharashtra' },
+    'aurangabad': { city: 'Aurangabad', state: 'Maharashtra' },
+    'sambhajinagar': { city: 'Chhatrapati Sambhajinagar', state: 'Maharashtra' },
+    'kolhapur': { city: 'Kolhapur', state: 'Maharashtra' },
+    'solapur': { city: 'Solapur', state: 'Maharashtra' },
+    'thane': { city: 'Thane', state: 'Maharashtra' },
+    'amravati': { city: 'Amravati', state: 'Maharashtra' },
+    'nanded': { city: 'Nanded', state: 'Maharashtra' },
+    'jalgaon': { city: 'Jalgaon', state: 'Maharashtra' },
+    'akola': { city: 'Akola', state: 'Maharashtra' },
+    'latur': { city: 'Latur', state: 'Maharashtra' },
+    'dhule': { city: 'Dhule', state: 'Maharashtra' },
+    'ahmednagar': { city: 'Ahmednagar', state: 'Maharashtra' },
+    'satara': { city: 'Satara', state: 'Maharashtra' },
+    'sangli': { city: 'Sangli', state: 'Maharashtra' },
 
-const STATES_PAGE_3 = [
-    { code: 'tn', num: 18, name_en: '18. Tamil Nadu', name_hi: '18. तमिलनाडु', name_gu: '18. તમિલનાડુ', cities_en: ['Chennai', 'Coimbatore', 'Madurai', 'Tiruchirappalli', 'Salem', 'Tiruppur', 'Erode'], cities_hi: ['चेन्नई', 'कोयंबटूर', 'मदुरै', 'तिरुचिरापल्ली', 'सलेम', 'तिरुपूर', 'इरोड'], cities_gu: ['ચેન્નાઈ', 'કોયમ્બતૂર', 'મદુરાઈ', 'તિરુચિરાપલ્લી', 'સાલેમ', 'તિરુપુર', 'ઈરોડ'] },
-    { code: 'tg', num: 19, name_en: '19. Telangana', name_hi: '19. तेलंगाना', name_gu: '19. તેલંગાણા', cities_en: ['Hyderabad', 'Warangal', 'Nizamabad', 'Khammam', 'Karimnagar', 'Ramagundam'], cities_hi: ['हैदराबाद', 'वारंगल', 'निजामाबाद', 'खम्मम', 'करीमनगर', 'रामागुंडम'], cities_gu: ['હૈદરાબાદ', 'વારંગલ', 'નિઝામાબાદ', 'ખમ્મમ', 'કરીમનગર', 'રામાગુંડમ'] },
-    { code: 'up', num: 20, name_en: '20. Uttar Pradesh', name_hi: '20. उत्तर प्रदेश', name_gu: '20. ઉત્તર પ્રદેશ', cities_en: ['Lucknow', 'Kanpur', 'Varanasi', 'Agra', 'Prayagraj', 'Meerut', 'Bareilly', 'Noida'], cities_hi: ['लखनऊ', 'कानपुर', 'वाराणसी', 'आगरा', 'प्रयागराज', 'मेरठ', 'बरेली', 'नोएडा'], cities_gu: ['લખનૌ', 'કાનપુર', 'વારાણસી', 'આગ્રા', 'પ્રયાગરાજ', 'મેરઠ', 'બરેલી', 'નોઇડા'] },
-    { code: 'uk', num: 21, name_en: '21. Uttarakhand', name_hi: '21. उत्तराखंड', name_gu: '21. ઉત્તરાખંડ', cities_en: ['Dehradun', 'Haridwar', 'Roorkee', 'Haldwani', 'Rudrapur', 'Kashipur', 'Rishikesh'], cities_hi: ['देहरादून', 'हरिद्वार', 'रुड़की', 'हल्द्वानी', 'रुद्रपुर', 'काशीपुर', 'ऋषिकेश'], cities_gu: ['દેહરાદૂન', 'હરિદ્વાર', 'રૂડકી', 'હલ્દવાની', 'રુદ્રપુર', 'કાશીપુર', 'ઋષિકેશ'] },
-    { code: 'wb', num: 22, name_en: '22. West Bengal', name_hi: '22. पश्चिम बंगाल', name_gu: '22. પશ્ચિમ બંગાળ', cities_en: ['Kolkata', 'Howrah', 'Durgapur', 'Asansol', 'Siliguri', 'Bardhaman', 'Malda'], cities_hi: ['कोलकाता', 'हावड़ा', 'दुर्गापुर', 'आसनसोल', 'सिलीगुड़ी', 'बर्दवान', 'मालदा'], cities_gu: ['કોલકાતા', 'હાવડા', 'દુર્ગાપુર', 'આસનસોલ', 'સિલીગુડી', 'બર્ધમાન', 'માલદા'] }
-];
+    // Rajasthan
+    'jaipur': { city: 'Jaipur', state: 'Rajasthan' },
+    'જયપુર': { city: 'જયપુર', state: 'રાજસ્થાન' },
+    'जयपुर': { city: 'जयपुर', state: 'राजस्थान' },
+    'jodhpur': { city: 'Jodhpur', state: 'Rajasthan' },
+    'જોધપુર': { city: 'જોધપુર', state: 'રાજસ્થાન' },
+    'जोधपुर': { city: 'जोधपुर', state: 'राजस्थान' },
+    'kota': { city: 'Kota', state: 'Rajasthan' },
+    'bikaner': { city: 'Bikaner', state: 'Rajasthan' },
+    'udaipur': { city: 'Udaipur', state: 'Rajasthan' },
+    'ajmer': { city: 'Ajmer', state: 'Rajasthan' },
+    'bhilwara': { city: 'Bhilwara', state: 'Rajasthan' },
+    'alwar': { city: 'Alwar', state: 'Rajasthan' },
+    'sikar': { city: 'Sikar', state: 'Rajasthan' },
+    'barmer': { city: 'Barmer', state: 'Rajasthan' },
+    'બાડમેર': { city: 'બાડમેર', state: 'રાજસ્થાન' },
+    'बाड़मेर': { city: 'बाड़मेर', state: 'राजस्थान' },
+    'badmer': { city: 'Barmer', state: 'Rajasthan' },
+    'chittorgarh': { city: 'Chittorgarh', state: 'Rajasthan' },
+    'pali': { city: 'Pali', state: 'Rajasthan' },
+    'ganganagar': { city: 'Sri Ganganagar', state: 'Rajasthan' },
+    'bharatpur': { city: 'Bharatpur', state: 'Rajasthan' },
 
-const ALL_STATES_FLAT = [...STATES_PAGE_1, ...STATES_PAGE_2, ...STATES_PAGE_3];
+    // Madhya Pradesh
+    'indore': { city: 'Indore', state: 'Madhya Pradesh' },
+    'ઇન્દોર': { city: 'ઇન્દોર', state: 'મધ્ય પ્રદેશ' },
+    'इंदौर': { city: 'इंदौर', state: 'मध्य प्रदेश' },
+    'bhopal': { city: 'Bhopal', state: 'Madhya Pradesh' },
+    'ભોપાલ': { city: 'ભોપાલ', state: 'મધ્ય પ્રદેશ' },
+    'भोपाल': { city: 'भोपाल', state: 'मध्य प्रदेश' },
+    'jabalpur': { city: 'Jabalpur', state: 'Madhya Pradesh' },
+    'gwalior': { city: 'Gwalior', state: 'Madhya Pradesh' },
+    'ujjain': { city: 'Ujjain', state: 'Madhya Pradesh' },
+    'sagar': { city: 'Sagar', state: 'Madhya Pradesh' },
+    'dewas': { city: 'Dewas', state: 'Madhya Pradesh' },
+    'satna': { city: 'Satna', state: 'Madhya Pradesh' },
+    'ratlam': { city: 'Ratlam', state: 'Madhya Pradesh' },
+    'rewa': { city: 'Rewa', state: 'Madhya Pradesh' },
+    'katni': { city: 'Katni', state: 'Madhya Pradesh' },
+    'khandwa': { city: 'Khandwa', state: 'Madhya Pradesh' },
+    'chhindwara': { city: 'Chhindwara', state: 'Madhya Pradesh' },
+
+    // Uttar Pradesh
+    'lucknow': { city: 'Lucknow', state: 'Uttar Pradesh' },
+    'લખનૌ': { city: 'લખનૌ', state: 'ઉત્તર પ્રદેશ' },
+    'लखनऊ': { city: 'लखनऊ', state: 'उत्तर प्रदेश' },
+    'kanpur': { city: 'Kanpur', state: 'Uttar Pradesh' },
+    'કાનપુર': { city: 'કાનપુર', state: 'ઉત્તર પ્રદેશ' },
+    'कानपुर': { city: 'कानपुर', state: 'उत्तर प्रदेश' },
+    'varanasi': { city: 'Varanasi', state: 'Uttar Pradesh' },
+    'बनारस': { city: 'वाराणसी', state: 'उत्तर प्रदेश' },
+    'agra': { city: 'Agra', state: 'Uttar Pradesh' },
+    'prayagraj': { city: 'Prayagraj', state: 'Uttar Pradesh' },
+    'allahabad': { city: 'Prayagraj', state: 'Uttar Pradesh' },
+    'meerut': { city: 'Meerut', state: 'Uttar Pradesh' },
+    'bareilly': { city: 'Bareilly', state: 'Uttar Pradesh' },
+    'aligarh': { city: 'Aligarh', state: 'Uttar Pradesh' },
+    'moradabad': { city: 'Moradabad', state: 'Uttar Pradesh' },
+    'noida': { city: 'Noida', state: 'Uttar Pradesh' },
+    'gorakhpur': { city: 'Gorakhpur', state: 'Uttar Pradesh' },
+    'jhansi': { city: 'Jhansi', state: 'Uttar Pradesh' },
+    'mathura': { city: 'Mathura', state: 'Uttar Pradesh' },
+
+    // Delhi & Other States
+    'delhi': { city: 'Delhi', state: 'Delhi' },
+    'new delhi': { city: 'New Delhi', state: 'Delhi' },
+    'patna': { city: 'Patna', state: 'Bihar' },
+    'gaya': { city: 'Gaya', state: 'Bihar' },
+    'muzaffarpur': { city: 'Muzaffarpur', state: 'Bihar' },
+    'bhagalpur': { city: 'Bhagalpur', state: 'Bihar' },
+    'faridabad': { city: 'Faridabad', state: 'Haryana' },
+    'gurugram': { city: 'Gurugram', state: 'Haryana' },
+    'gurgaon': { city: 'Gurugram', state: 'Haryana' },
+    'panipat': { city: 'Panipat', state: 'Haryana' },
+    'karnal': { city: 'Karnal', state: 'Haryana' },
+    'ludhiana': { city: 'Ludhiana', state: 'Punjab' },
+    'amritsar': { city: 'Amritsar', state: 'Punjab' },
+    'jalandhar': { city: 'Jalandhar', state: 'Punjab' },
+    'bengaluru': { city: 'Bengaluru', state: 'Karnataka' },
+    'bangalore': { city: 'Bengaluru', state: 'Karnataka' },
+    'hyderabad': { city: 'Hyderabad', state: 'Telangana' },
+    'chennai': { city: 'Chennai', state: 'Tamil Nadu' },
+    'kolkata': { city: 'Kolkata', state: 'West Bengal' },
+    'raipur': { city: 'Raipur', state: 'Chhattisgarh' },
+    'ranchi': { city: 'Ranchi', state: 'Jharkhand' },
+    'bhubaneswar': { city: 'Bhubaneswar', state: 'Odisha' }
+};
+
+// Helper: Auto-detect City and State from Customer Text Input
+function parseNameAndLocation(inputStr, defaultLang = 'en') {
+    const clean = inputStr.replace(/[\n\r,]+/g, ' ').trim();
+    const words = clean.split(/\s+/);
+
+    let detectedCity = null;
+    let detectedState = null;
+    let remainingWords = [];
+
+    // Check 2-word cities first (e.g., 'Chhota Udepur', 'New Delhi')
+    for (let i = 0; i < words.length - 1; i++) {
+        const twoWord = (words[i] + ' ' + words[i + 1]).toLowerCase();
+        if (CITY_STATE_MAP[twoWord]) {
+            detectedCity = CITY_STATE_MAP[twoWord].city;
+            detectedState = CITY_STATE_MAP[twoWord].state;
+            words.splice(i, 2);
+            break;
+        }
+    }
+
+    // Check single word cities
+    if (!detectedCity) {
+        for (let i = 0; i < words.length; i++) {
+            const single = words[i].toLowerCase();
+            if (CITY_STATE_MAP[single]) {
+                detectedCity = CITY_STATE_MAP[single].city;
+                detectedState = CITY_STATE_MAP[single].state;
+                words.splice(i, 1);
+                break;
+            }
+        }
+    }
+
+    const detectedName = words.join(' ').trim() || 'Valued Customer';
+
+    // If city wasn't in our database, fallback to last word as city
+    if (!detectedCity) {
+        const parts = inputStr.split(/[,\\n-]+/);
+        if (parts.length >= 2) {
+            return {
+                name: parts[0].trim(),
+                city: parts[1].trim(),
+                state: parts[2] ? parts[2].trim() : 'India'
+            };
+        }
+        return {
+            name: detectedName,
+            city: 'Gujarat/India',
+            state: 'India'
+        };
+    }
+
+    return {
+        name: detectedName,
+        city: detectedCity,
+        state: detectedState
+    };
+}
 
 const processedMessages = new Set();
 global.customerState = global.customerState || {};
@@ -130,19 +314,18 @@ app.post('/webhook', async (req, res) => {
         }
 
         const lower = incomingText.toLowerCase();
+        let userState = global.customerState[fromPhone] || { lang: 'en', step: 'INIT' };
 
-        // 0. RESET / START
-        if (lower === 'hi' || lower === 'hello' || lower === 'start' || lower === 'menu') {
+        // 0. RESET / START (Strictly on explicit greetings)
+        if (lower === 'hi' || lower === 'hello' || lower === 'start' || lower === 'restart' || lower === 'menu') {
             global.customerState[fromPhone] = { step: 'LANG' };
-            await sendInteractiveButtons(fromPhone, "Welcome to Jay Shree Ambe Food Machinery! 🙏\nPlease select your language / भाषा चुनें / ભાષા પસંદ કરો:", [
+            await sendInteractiveButtons(fromPhone, "Welcome to Jay Shree Ambe Food Machinery! 🙏\nDirect Manufacturer of Commercial Pulverizers.\n\nPlease select your preferred language:\nકૃપા કરીને આપની ભાષા પસંદ કરો:\nकृपया अपनी भाषा चुनें:", [
                 { id: 'lang_en', title: 'English' },
                 { id: 'lang_hi', title: 'हिंदी' },
                 { id: 'lang_gu', title: 'ગુજરાતી' }
             ]);
             return res.sendStatus(200);
         }
-
-        let userState = global.customerState[fromPhone] || { lang: 'en', step: 'INIT' };
 
         // 1. LANGUAGE SELECTED -> Ask Phase
         if (interactiveId.startsWith('lang_')) {
@@ -151,18 +334,18 @@ app.post('/webhook', async (req, res) => {
             userState.step = 'PHASE';
             global.customerState[fromPhone] = userState;
 
-            if (lang === 'hi') {
-                await sendInteractiveButtons(fromPhone, "आपको कौन सा फेज चाहिए?", [
-                    { id: 'ph_single_hi', title: 'सिंगल फेज' },
-                    { id: 'ph_three_hi', title: 'थ्री फेज' }
-                ]);
-            } else if (lang === 'gu') {
-                await sendInteractiveButtons(fromPhone, "આપને કયો ફેઝ જોઈએ છે?", [
+            if (lang === 'gu') {
+                await sendInteractiveButtons(fromPhone, "આપને કયો પાવર કનેક્શન સપ્લાય જોઈએ છે?", [
                     { id: 'ph_single_gu', title: 'સિંગલ ફેઝ' },
                     { id: 'ph_three_gu', title: 'થ્રી ફેઝ' }
                 ]);
+            } else if (lang === 'hi') {
+                await sendInteractiveButtons(fromPhone, "आपको किस प्रकार का पावर कनेक्शन चाहिए?", [
+                    { id: 'ph_single_hi', title: 'सिंगल फेज' },
+                    { id: 'ph_three_hi', title: 'थ्री फेज' }
+                ]);
             } else {
-                await sendInteractiveButtons(fromPhone, "Which phase do you require?", [
+                await sendInteractiveButtons(fromPhone, "Which electrical power connection do you require?", [
                     { id: 'ph_single_en', title: 'Single Phase' },
                     { id: 'ph_three_en', title: 'Three Phase' }
                 ]);
@@ -170,38 +353,39 @@ app.post('/webhook', async (req, res) => {
             return res.sendStatus(200);
         }
 
-        // 2. SINGLE PHASE CHOSEN -> Polite Disclaimer
+        // 2. SINGLE PHASE CHOSEN -> Polite Professional Disclaimer
         if (interactiveId.startsWith('ph_single')) {
             const lang = interactiveId.endsWith('_hi') ? 'hi' : interactiveId.endsWith('_gu') ? 'gu' : 'en';
             userState.lang = lang;
             global.customerState[fromPhone] = userState;
 
-            if (lang === 'hi') {
-                await sendInteractiveButtons(fromPhone, "क्षमा करें, हम सिंगल फेज मशीन नहीं बनाते हैं। हम केवल थ्री-फेज कमर्शियल पल्वराइजर (5 HP से 30 HP) बनाते हैं। क्या आप थ्री-फेज मशीन देखना चाहते हैं?", [
-                    { id: 'ph_three_hi', title: 'थ्री-फेज मशीन देखें' },
-                    { id: 'talk_sales_hi', title: 'सेल्स टीम से बात' }
+            if (lang === 'gu') {
+                await sendInteractiveButtons(fromPhone, "જય શ્રી અંબે ફૂડ મશીનરીમાં આપનું સ્વાગત છે. 🙏\n\n*મહત્વપૂર્ણ નોંધ:* અમે ખાસ કરીને હેવી-ડ્યુટી *થ્રી-ફેઝ કોમર્શિયલ પલ્વરાઇઝર (5 HP થી 30 HP)* નું જ ઉત્પાદન કરીએ છીએ. અમે ઘરેલુ કે સિંગલ-ફેઝ મશીન બનાવતા નથી.\n\nશું આપ અમારા થ્રી-ફેઝ કોમર્શિયલ મશીનો જોવા માંગો છો?", [
+                    { id: 'ph_three_gu', title: 'થ્રી-ફેઝ મશીનો જુઓ' },
+                    { id: 'talk_sales_gu', title: 'સેલ્સ એક્સપર્ટ વાત' }
                 ]);
-            } else if (lang === 'gu') {
-                await sendInteractiveButtons(fromPhone, "દિલગીર છીએ, અમે સિંગલ ફેઝ મશીન બનાવતા નથી. અમે ફક્ત થ્રી-ફેઝ કોમર્શિયલ પલ્વરાઇઝર (5 HP થી 30 HP) બનાવીએ છીએ. શું આપ થ્રી-ફેઝ મશીન જોવા માંગો છો?", [
-                    { id: 'ph_three_gu', title: 'થ્રી-ફેઝ મશીન બતાવો' },
-                    { id: 'talk_sales_gu', title: 'સેલ્સ ટીમ વાત કરો' }
+            } else if (lang === 'hi') {
+                await sendInteractiveButtons(fromPhone, "जय श्री अम्बे फूड मशीनरी में आपका स्वागत है। 🙏\n\n*महत्वपूर्ण सूचना:* हम विशेष रूप से केवल हेवी-ड्यूटी *थ्री-फेज कमर्शियल पल्वराइजर (5 HP से 30 HP)* का निर्माण करते हैं। हम घरेलू अथवा सिंगल-फेज मशीनें नहीं बनाते हैं।\n\nक्या आप हमारी थ्री-फेज कमर्शियल मशीनों की श्रृंखला देखना चाहते हैं?", [
+                    { id: 'ph_three_hi', title: 'थ्री-फेज मशीनें देखें' },
+                    { id: 'talk_sales_hi', title: 'सेल्स एक्सपर्ट से बात' }
                 ]);
             } else {
-                await sendInteractiveButtons(fromPhone, "Sorry, we do not manufacture Single Phase machinery. We exclusively manufacture heavy commercial Three-Phase Pulverizers (5 HP to 30 HP). Would you like to explore Three-Phase machines?", [
-                    { id: 'ph_three_en', title: 'Show Three Phase' },
+                await sendInteractiveButtons(fromPhone, "Thank you for your inquiry. 🙏\n\n*Please Note:* At *Jay Shree Ambe Food Machinery*, we specialize exclusively in heavy-duty *Three-Phase Commercial Pulverizers (5 HP to 30 HP)*. We do not manufacture domestic or single-phase machinery.\n\nWould you like to explore our commercial Three-Phase machinery range?", [
+                    { id: 'ph_three_en', title: 'Explore Three-Phase' },
                     { id: 'talk_sales_en', title: 'Talk to Sales' }
                 ]);
             }
             return res.sendStatus(200);
         }
 
+        // TALK TO SALES DIRECT ACTION
         if (interactiveId.startsWith('talk_sales')) {
             const lang = interactiveId.endsWith('_hi') ? 'hi' : interactiveId.endsWith('_gu') ? 'gu' : 'en';
             const contactMsg = (lang === 'gu') ?
-                "આપ અમારા સેલ્સ એક્ઝિક્યુટિવ શ્રી અનિલ પંચાલ સાથે સીધો સંપર્ક કરી શકો છો: +91 9925343582." :
+                "આપ અમારા સિનિયર સેલ્સ એક્ઝિક્યુટિવ શ્રી અનિલ પંચાલ સાથે સીધો સંપર્ક કરી શકો છો:\n📞 ફોન: +91 9925343582\n\nઅમારી ટીમ આપને સંપૂર્ણ સહાય કરશે." :
                 (lang === 'hi') ?
-                "आप हमारे सेल्स एग्जीक्यूटिव श्री अनिल पांचाल से सीधे संपर्क कर सकते हैं: +91 9925343582." :
-                "You can directly contact our Sales Executive Mr. Anil Panchal at +91 9925343582.";
+                "आप हमारे सीनियर सेल्स एग्जीक्यूटिव श्री अनिल पांचाल से सीधे संपर्क कर सकते हैं:\n📞 फोन: +91 9925343582\n\nहमारी टीम आपकी पूरी सहायता करेगी।" :
+                "You can directly contact our Senior Sales Executive Mr. Anil Panchal:\n📞 Phone: +91 9925343582\n\nOur team will assist you immediately.";
             await sendWhatsAppText(fromPhone, contactMsg);
             return res.sendStatus(200);
         }
@@ -214,33 +398,33 @@ app.post('/webhook', async (req, res) => {
             userState.step = 'CATEGORY';
             global.customerState[fromPhone] = userState;
 
-            const catTitle = (lang === 'gu') ? 'આપને કયું મશીન જોઈએ છે?' :
-                             (lang === 'hi') ? 'आपको कौन सी मशीन चाहिए?' :
-                             'Which machine are you looking for?';
-            const btnLabel = (lang === 'gu') ? 'મશીન પસંદ કરો' : (lang === 'hi') ? 'मशीन चुनें' : 'Select Machine';
+            const catTitle = (lang === 'gu') ? 'આપ કયા પ્રકારનું મશીન શોધી રહ્યા છો?' :
+                             (lang === 'hi') ? 'आप किस प्रकार की मशीन ढूंढ रहे हैं?' :
+                             'Which machinery category are you looking for?';
+            const btnLabel = (lang === 'gu') ? 'મશીન પસંદ કરો' : (lang === 'hi') ? 'मशीन चुनें' : 'Select Category';
 
             const catOptions = (lang === 'gu') ? [
-                { id: 'cat_atta_gu', title: 'આટા ચક્કી' },
-                { id: 'cat_masala_gu', title: 'મસાલા ગ્રાઇન્ડીંગ' },
-                { id: 'cat_haldi_gu', title: 'હળદર ગ્રાઇન્ડીંગ' },
-                { id: 'cat_chilly_gu', title: 'મરચા ગ્રાઇન્ડીંગ' }
+                { id: 'cat_atta_gu', title: 'આટા ચક્કી', description: 'કોમર્શિયલ ફ્લોર મિલ પલ્વરાઇઝર' },
+                { id: 'cat_masala_gu', title: 'મસાલા ગ્રાઇન્ડીંગ', description: 'હેવી ડ્યુટી મસાલા મિલ' },
+                { id: 'cat_haldi_gu', title: 'હળદર ગ્રાઇન્ડીંગ', description: 'સ્પેશિયલ હળદર દળવાનું મશીન' },
+                { id: 'cat_chilly_gu', title: 'મરચા ગ્રાઇન્ડીંગ', description: 'મરચા દળવા માટે સ્પેશિયલ મશીન' }
             ] : (lang === 'hi') ? [
-                { id: 'cat_atta_hi', title: 'आटा चक्की' },
-                { id: 'cat_masala_hi', title: 'मसाला ग्राइंडिंग' },
-                { id: 'cat_haldi_hi', title: 'हल्दी ग्राइंडिंग' },
-                { id: 'cat_chilly_hi', title: 'मिर्ची ग्राइंडिंग' }
+                { id: 'cat_atta_hi', title: 'आटा चक्की', description: 'कमर्शियल फ्लोर मिल पल्वराइजर' },
+                { id: 'cat_masala_hi', title: 'मसाला ग्राइंडिंग', description: 'हेवी ड्यूटी मसाला मिल' },
+                { id: 'cat_haldi_hi', title: 'हल्दी ग्राइंडिंग', description: 'स्पेशल हल्दी पीसने की मशीन' },
+                { id: 'cat_chilly_hi', title: 'मिर्ची ग्राइंडिंग', description: 'मिर्ची पीसने के लिए स्पेशल मशीन' }
             ] : [
-                { id: 'cat_atta_en', title: 'Atta Chakki' },
-                { id: 'cat_masala_en', title: 'Masala Grinding' },
-                { id: 'cat_haldi_en', title: 'Haldi Grinding' },
-                { id: 'cat_chilly_en', title: 'Chilly Grinding' }
+                { id: 'cat_atta_en', title: 'Atta Chakki', description: 'Commercial Flour Mill Pulverizer' },
+                { id: 'cat_masala_en', title: 'Masala Grinding', description: 'Heavy Duty Spice Grinder' },
+                { id: 'cat_haldi_en', title: 'Haldi Grinding', description: 'Turmeric Grinding Specialist' },
+                { id: 'cat_chilly_en', title: 'Chilly Grinding', description: 'Chilly Grinding Pulverizer' }
             ];
 
             await sendInteractiveList(fromPhone, catTitle, btnLabel, catOptions);
             return res.sendStatus(200);
         }
 
-        // 4. CATEGORY CHOSEN -> Cyclone or Standard
+        // 4. CATEGORY CHOSEN -> Cyclone Attachment Option
         if (interactiveId.startsWith('cat_')) {
             const lang = interactiveId.endsWith('_hi') ? 'hi' : interactiveId.endsWith('_gu') ? 'gu' : 'en';
             userState.lang = lang;
@@ -248,19 +432,19 @@ app.post('/webhook', async (req, res) => {
             userState.step = 'TYPE';
             global.customerState[fromPhone] = userState;
 
-            const qText = (lang === 'gu') ? 'આપને સાયક્લોન સાથે જોઈએ છે કે સ્ટાન્ડર્ડ?' :
-                          (lang === 'hi') ? 'साइक्लोन के साथ चाहिए या साधारण?' :
-                          'Do you need With Cyclone or Standard?';
+            const qText = (lang === 'gu') ? 'આપ સાયક્લોન ડસ્ટ કલેક્ટર સાથે મશીન મેળવવા માંગો છો કે સ્ટાન્ડર્ડ?' :
+                          (lang === 'hi') ? 'क्या आप साइक्लोन डस्ट कलेक्टर के साथ मशीन चाहते हैं या साधारण?' :
+                          'Would you like your pulverizer with a Cyclone Dust Collector or Standard?';
 
             await sendInteractiveButtons(fromPhone, qText, [
-                { id: `type_std_${lang}`, title: (lang === 'gu') ? 'સ્ટાન્ડર્ડ' : (lang === 'hi') ? 'साधारण' : 'Standard' },
+                { id: `type_std_${lang}`, title: (lang === 'gu') ? 'સ્ટાન્ડર્ડ' : (lang === 'hi') ? 'સાધારણ' : 'Standard' },
                 { id: `type_cyc_${lang}`, title: (lang === 'gu') ? 'સાયક્લોન સાથે' : (lang === 'hi') ? 'साइक्लोन के साथ' : 'With Cyclone' },
-                { id: `type_both_${lang}`, title: (lang === 'gu') ? 'બંને ઓપ્શન' : (lang === 'hi') ? 'दोनों विकल्प' : 'Show Both' }
+                { id: `type_both_${lang}`, title: (lang === 'gu') ? 'બંને વિકલ્પો' : (lang === 'hi') ? 'दोनों विकल्प' : 'Show Both' }
             ]);
             return res.sendStatus(200);
         }
 
-        // 5. TYPE CHOSEN -> HP Capacity
+        // 5. TYPE CHOSEN -> Capacity Selection (5 HP to 30 HP)
         if (interactiveId.startsWith('type_')) {
             const parts = interactiveId.split('_'); // type, std/cyc/both, lang
             const typeCode = parts[1] || 'std';
@@ -271,26 +455,26 @@ app.post('/webhook', async (req, res) => {
             userState.step = 'HP';
             global.customerState[fromPhone] = userState;
 
-            const hpTitle = (lang === 'gu') ? 'મોટર કેપેસિટી (HP) પસંદ કરો:' :
-                            (lang === 'hi') ? 'मोटर क्षमता (HP) चुनें:' :
-                            'Select HP Capacity:';
-            const btnLabel = (lang === 'gu') ? 'HP પસંદ કરો' : (lang === 'hi') ? 'HP चुनें' : 'Select HP';
+            const hpTitle = (lang === 'gu') ? 'કૃપા કરીને જરૂરી મોટર ક્ષમતા (HP) પસંદ કરો:' :
+                            (lang === 'hi') ? 'कृपया आवश्यक मोटर क्षमता (HP) चुनें:' :
+                            'Please select the required motor capacity (HP):';
+            const btnLabel = (lang === 'gu') ? 'HP ક્ષમતા પસંદ કરો' : (lang === 'hi') ? 'HP क्षमता चुनें' : 'Select Capacity';
 
             const hpList = [
-                { id: `hp_5_${typeCode}_${lang}`, title: '5 HP' },
-                { id: `hp_75_${typeCode}_${lang}`, title: '7.5 HP' },
-                { id: `hp_10_${typeCode}_${lang}`, title: '10 HP' },
-                { id: `hp_15_${typeCode}_${lang}`, title: '15 HP' },
-                { id: `hp_20_${typeCode}_${lang}`, title: '20 HP' },
-                { id: `hp_25_${typeCode}_${lang}`, title: '25 HP' },
-                { id: `hp_30_${typeCode}_${lang}`, title: '30 HP' }
+                { id: `hp_5_${typeCode}_${lang}`, title: '5 HP Pulverizer', description: 'Capacity: 35-50 KG/HR' },
+                { id: `hp_75_${typeCode}_${lang}`, title: '7.5 HP Pulverizer', description: 'Capacity: 60-80 KG/HR' },
+                { id: `hp_10_${typeCode}_${lang}`, title: '10 HP Pulverizer', description: 'Capacity: 80-100 KG/HR' },
+                { id: `hp_15_${typeCode}_${lang}`, title: '15 HP Pulverizer', description: 'Capacity: 100-150 KG/HR' },
+                { id: `hp_20_${typeCode}_${lang}`, title: '20 HP Pulverizer', description: 'Capacity: 150-200 KG/HR' },
+                { id: `hp_25_${typeCode}_${lang}`, title: '25 HP Pulverizer', description: 'Capacity: 200-250 KG/HR' },
+                { id: `hp_30_${typeCode}_${lang}`, title: '30 HP Pulverizer', description: 'Capacity: 250-300 KG/HR' }
             ];
 
             await sendInteractiveList(fromPhone, hpTitle, btnLabel, hpList);
             return res.sendStatus(200);
         }
 
-        // 6. HP CHOSEN -> Ask Full Name
+        // 6. HP CHOSEN -> Ask Full Name & City (Single Message Form, NO distracting links yet)
         if (interactiveId.startsWith('hp_')) {
             const parts = interactiveId.split('_'); // hp, num, typeCode, lang
             const hpNum = parts[1] === '75' ? '7.5 HP' : `${parts[1]} HP`;
@@ -300,112 +484,64 @@ app.post('/webhook', async (req, res) => {
             const typeName = (typeCode === 'cyc') ? 
                 (lang === 'hi' ? 'साइक्लोन के साथ' : lang === 'gu' ? 'સાયક્લોન સાથે' : 'With Cyclone') :
                 (typeCode === 'both') ?
-                (lang === 'hi' ? 'दोनों विकल्प' : lang === 'gu' ? 'બંને ઓપ્શન' : 'Both Options') :
+                (lang === 'hi' ? 'दोनों विकल्प' : lang === 'gu' ? 'બંને વિકલ્પો' : 'Both Options') :
                 (lang === 'hi' ? 'साधारण' : lang === 'gu' ? 'સ્ટાન્ડર્ડ' : 'Standard');
 
             userState.lang = lang;
             userState.hp = hpNum;
             userState.type = typeName;
-            userState.step = 'NAME';
+            userState.step = 'AWAITING_DETAILS';
             global.customerState[fromPhone] = userState;
 
-            const namePrompt = (lang === 'gu') ? 
-                `ખૂબ સરસ! આપનું મશીન: *${hpNum}* (${typeName}).\n\nકૃપા કરીને આપનું *પૂરું નામ* અહીં લખીને મોકલો:` :
+            const formPrompt = (lang === 'gu') ? 
+                `ખૂબ સરસ! આપની પસંદગી: *${hpNum} પલ્વરાઇઝર (${typeName})*.\n\nઆપના માટે ઓફિશિયલ કવોટેશન તૈયાર કરવા માટે, કૃપા કરીને આપનું *પૂરું નામ* અને *શહેર અથવા ગામ* અહીં લખીને મોકલો:\n\n*(દા.ત. રમેશભાઈ પટેલ, સુરત)*` :
                 (lang === 'hi') ?
-                `बहुत बढ़िया! आपकी मशीन: *${hpNum}* (${typeName}).\n\nकृपया अपना *पूरा नाम* यहाँ लिखकर भेजें:` :
-                `Great! Selected: *${hpNum}* (${typeName}).\n\nPlease type your *Full Name* below:`;
+                `उत्कृष्ट चयन! आपकी पसंद: *${hpNum} पल्वराइजर (${typeName})*.\n\nआपके लिए औपचारिक कोटेशन तैयार करने हेतु, कृपया अपना *पूरा नाम* और *शहर अथवा गाँव* यहाँ लिखकर भेजें:\n\n*(उदा. रमेश पटेल, सूरत)*` :
+                `Excellent choice! Selected: *${hpNum} Pulverizer (${typeName})*.\n\nTo generate your official quotation, please reply with your *Full Name* and *City or Town* below:\n\n*(e.g., Ramesh Patel, Surat)*`;
 
-            await sendWhatsAppText(fromPhone, namePrompt);
+            await sendWhatsAppText(fromPhone, formPrompt);
             return res.sendStatus(200);
         }
 
-        // 7. SHOW STATE PAGES (Page 1, 2, 3 Navigation)
-        if (interactiveId.startsWith('stpage_')) {
-            const parts = interactiveId.split('_'); // stpage, 1/2/3, lang
-            const pageNum = parseInt(parts[1], 10);
-            const lang = parts[2] || userState.lang || 'en';
-
-            await sendStatePage(fromPhone, pageNum, lang);
-            return res.sendStatus(200);
-        }
-
-        // 8. STATE CHOSEN (Numbered Full Name) -> Show Cities
-        if (interactiveId.startsWith('st_')) {
-            const parts = interactiveId.split('_'); // st, code, lang
-            const stCode = parts[1];
-            const lang = parts[2] || userState.lang || 'en';
-
-            userState.lang = lang;
-            userState.state = incomingText;
-            userState.step = 'CITY';
-            global.customerState[fromPhone] = userState;
-
-            const matchedState = ALL_STATES_FLAT.find(s => s.code === stCode);
-
-            if (matchedState) {
-                const cities = (lang === 'gu' ? matchedState.cities_gu : lang === 'hi' ? matchedState.cities_hi : matchedState.cities_en) || [];
-                const cityPrompt = (lang === 'gu') ? 
-                    `આપનું રાજ્ય *${incomingText}* પસંદ થયું છે. આપનું શહેર પસંદ કરો:` :
-                    (lang === 'hi') ?
-                    `आपका राज्य *${incomingText}* चुना गया है। कृपया अपना शहर चुनें:` :
-                    `State: *${incomingText}*. Please tap your City:`;
-                const btnLabel = (lang === 'gu') ? 'શહેર પસંદ કરો' : (lang === 'hi') ? 'शहर चुनें' : 'Select City';
-
-                const cityOptions = cities.slice(0, 10).map((c, idx) => ({
-                    id: `ct_${idx}_${lang}`,
-                    title: c.substring(0, 24)
-                }));
-
-                await sendInteractiveList(fromPhone, cityPrompt, btnLabel, cityOptions);
-                return res.sendStatus(200);
-            }
-        }
-
-        // 9. CITY CHOSEN VIA TAP -> Finalize
-        if (interactiveId.startsWith('ct_')) {
-            const parts = interactiveId.split('_');
-            const lang = parts[2] || userState.lang || 'en';
-
-            userState.city = incomingText;
-            userState.step = 'COMPLETED';
-
-            await finalizeLead(fromPhone, userState, lang);
-            return res.sendStatus(200);
-        }
-
-        // TEXT HANDLING (Name OR Custom City OR Photo/Video)
+        // 7. TEXT HANDLING (Customer types Name & City -> Auto-Detect State & Finalize)
         if (messageObj.type === 'text') {
-            const lang = userState.lang || 'hi';
+            const lang = userState.lang || 'en';
 
-            // If user asks for video or photo or mentions links
+            // If customer asks for Video AFTER data collection
             if (lower.includes('video') || lower.includes('વિડીયો') || lower.includes('वीडियो') ||
-                lower.includes('photo') || lower.includes('image') || lower.includes('ફોટો') || lower.includes('फोटो') ||
-                lower.includes('youtube') || lower.includes('facebook') || userState.step === 'COMPLETED') {
-                
+                lower.includes('youtube') || lower.includes('facebook') || lower.includes('demo') ||
+                lower.includes('photo') || lower.includes('image') || userState.step === 'COMPLETED') {
+
                 const mediaMsg = (lang === 'gu') ?
-                    `અમારા મશીનોના લાઈવ ગ્રાઇન્ડીંગ ડેમો વિડીયો અહીં જુઓ:\n\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Website:* https://jayambefoodmachinery.com\n\nકોઈપણ માહિતી કે કવોટેશન માટે સંપર્ક કરો:\n📞 શ્રી અનિલ પંચાલ (+91 9925343582)` :
+                    `🎥 *લાઈવ મશીન ડેમો વિડીયો અને ફોટા:*\n\nઅમારા પલ્વરાઇઝર મશીનોના લાઈવ ગ્રાઇન્ડીંગ ડેમો નીચે આપેલ સત્તાવાર લિંક્સ પર જુઓ:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nકોઈપણ તાત્કાલિક માહિતી માટે સીધો સંપર્ક કરો:\n📞 *શ્રી અનિલ પંચાલ (+91 9925343582)*` :
                     (lang === 'hi') ?
-                    `हमारी मशीनों के लाइव ग्राइंडिंग डेमो वीडियो यहाँ देखें:\n\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Website:* https://jayambefoodmachinery.com\n\nकिसी भी जानकारी या कोटेशन के लिए संपर्क करें:\n📞 श्री अनिल पांचाल (+91 9925343582)` :
-                    `Watch our live grinding demo videos here:\n\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Website:* https://jayambefoodmachinery.com\n\nFor any inquiries or quotations, contact:\n📞 Mr. Anil Panchal (+91 9925343582)`;
+                    `🎥 *लाइव मशीन डेमो वीडियो और फोटो:*\n\nहमारी पल्वराइजर मशीनों के लाइव ग्राइंडिंग डेमो नीचे दिए गए आधिकारिक लिंक्स पर देखें:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nकिसी भी त्वरित जानकारी के लिए संपर्क करें:\n📞 *श्री अनिल पांचाल (+91 9925343582)*` :
+                    `🎥 *Live Machine Demo Videos & Photos:*\n\nWatch our commercial pulverizers in live continuous operation on our official channels:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nFor any immediate assistance:\n📞 *Mr. Anil Panchal (+91 9925343582)*`;
 
                 await sendWhatsAppText(fromPhone, mediaMsg);
                 return res.sendStatus(200);
             }
 
-            // If we are at CITY step and user typed city name
-            if (userState.step === 'CITY') {
-                userState.city = incomingText;
-                userState.step = 'COMPLETED';
-                await finalizeLead(fromPhone, userState, lang);
-                return res.sendStatus(200);
-            }
-
-            // Otherwise, user typed their NAME -> Show Numbered Full Name States (Page 1: 1 to 9)
-            userState.name = incomingText;
-            userState.step = 'STATE_SELECT';
+            // Customer entered Name & City details!
+            const parsed = parseNameAndLocation(incomingText, lang);
+            userState.name = parsed.name;
+            userState.city = parsed.city;
+            userState.state = parsed.state;
+            userState.step = 'COMPLETED';
             global.customerState[fromPhone] = userState;
 
-            await sendStatePage(fromPhone, 1, lang);
+            // Sync to Odoo CRM and Supabase
+            await syncLeadToOdoo(fromPhone, userState);
+            await syncLeadToSupabase(fromPhone, userState);
+
+            // Send Confirmation & Sales Hand-off (Website included, Videos available on request)
+            const thankMsg = (lang === 'gu') ?
+                `✅ *આપની પૂછપરછ સફળતાપૂર્વક નોંધાઈ ગઈ છે!* 🙏\n\n📋 *પૂછપરછ વિગતો:*\n• *ગ્રાહક નામ:* ${userState.name}\n• *મશીન:* ${userState.hp || '20 HP'} (${userState.type || 'કોમર્શિયલ'})\n• *સ્થળ:* ${userState.city}, ${userState.state}\n\nઅમારા સિનિયર સેલ્સ એક્ઝિક્યુટિવ *શ્રી અનિલ પંચાલ (+91 9925343582)* ટૂંક સમયમાં બેસ્ટ કવોટેશન સાથે આપનો સંપર્ક કરશે.\n\n🌐 *સત્તાવાર વેબસાઇટ:* https://jayambefoodmachinery.com\n\n*(જો આપ આ મશીનનો લાઈવ વર્કિંગ વિડીયો જોવા માંગતા હો, તો કૃપા કરીને અહીં 'વિડીયો' લખીને મોકલો).*` :
+                (lang === 'hi') ?
+                `✅ *आपकी पूछताछ सफलतापूर्वक दर्ज कर ली गई है!* 🙏\n\n📋 *पूछताछ विवरण:*\n• *ग्राहक नाम:* ${userState.name}\n• *मशीन:* ${userState.hp || '20 HP'} (${userState.type || 'कमर्शियल'})\n• *स्थान:* ${userState.city}, ${userState.state}\n\nहमारे सीनियर सेल्स एग्जीक्यूटिव *श्री अनिल पांचाल (+91 9925343582)* जल्द ही सर्वोत्तम कोटेशन के साथ आपसे संपर्क करेंगे।\n\n🌐 *आधिकारिक वेबसाइट:* https://jayambefoodmachinery.com\n\n*(यदि आप इस मशीन का लाइव वर्किंग वीडियो देखना चाहते हैं, तो कृपया यहाँ 'वीडियो' लिखकर भेजें)।*` :
+                `✅ *Your inquiry has been successfully registered!* 🙏\n\n📋 *Inquiry Summary:*\n• *Customer Name:* ${userState.name}\n• *Machine:* ${userState.hp || '20 HP'} (${userState.type || 'Commercial'})\n• *Location:* ${userState.city}, ${userState.state}\n\nOur Senior Sales Executive *Mr. Anil Panchal (+91 9925343582)* will contact you shortly with the best pricing.\n\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\n*(If you would like to watch live machine grinding demo videos, please reply with 'Video').*`;
+
+            await sendWhatsAppText(fromPhone, thankMsg);
             return res.sendStatus(200);
         }
 
@@ -415,71 +551,6 @@ app.post('/webhook', async (req, res) => {
         res.sendStatus(500);
     }
 });
-
-// Helper to send Numbered Full Name States List
-async function sendStatePage(toPhone, pageNum, lang) {
-    const listTitle = (lang === 'gu') ? 'આપનું રાજ્ય પસંદ કરો:' :
-                      (lang === 'hi') ? 'अपना राज्य चुनें:' :
-                      'Select your State:';
-    const btnLabel = (lang === 'gu') ? 'રાજ્ય પસંદ કરો' : (lang === 'hi') ? 'राज्य चुनें' : 'Select State';
-
-    let states = [];
-    let nextRow = null;
-
-    if (pageNum === 1) {
-        states = STATES_PAGE_1;
-        nextRow = {
-            id: `stpage_2_${lang}`,
-            title: (lang === 'gu' ? '➡️ આગળ (10 થી 17)' : lang === 'hi' ? '➡️ आगे (10 से 17)' : '➡️ Next (10 to 17)').substring(0, 24),
-            description: (lang === 'gu' ? 'ઝારખંડ, મહારાષ્ટ્ર, રાજસ્થાન...' : lang === 'hi' ? 'झारखंड, महाराष्ट्र, राजस्थान...' : 'Jharkhand, MP, Maharashtra...').substring(0, 72)
-        };
-    } else if (pageNum === 2) {
-        states = STATES_PAGE_2;
-        nextRow = {
-            id: `stpage_3_${lang}`,
-            title: (lang === 'gu' ? '➡️ આગળ (18 થી 22)' : lang === 'hi' ? '➡️ आगे (18 से 22)' : '➡️ Next (18 to 22)').substring(0, 24),
-            description: (lang === 'gu' ? 'તમિલનાડુ, યુપી, બંગાળ...' : lang === 'hi' ? 'तमिलनाडु, यूपी, बंगाल...' : 'Tamil Nadu, UP, West Bengal...').substring(0, 72)
-        };
-    } else {
-        states = STATES_PAGE_3;
-        nextRow = {
-            id: `stpage_1_${lang}`,
-            title: (lang === 'gu' ? '⬅️ પહેલાંનાં (1 થી 9)' : lang === 'hi' ? '⬅️ पिछले (1 से 9)' : '⬅️ Back to (1 to 9)').substring(0, 24),
-            description: (lang === 'gu' ? 'ગુજરાત, બિહાર, દિલ્હી...' : lang === 'hi' ? 'गुजरात, बिहार, दिल्ली...' : 'Gujarat, Bihar, Delhi...').substring(0, 72)
-        };
-    }
-
-    const rows = states.map(st => {
-        const title = (lang === 'gu' ? st.name_gu : lang === 'hi' ? st.name_hi : st.name_en);
-        return {
-            id: `st_${st.code}_${lang}`,
-            title: title.substring(0, 24)
-        };
-    });
-
-    if (nextRow) {
-        rows.push(nextRow);
-    }
-
-    await sendInteractiveList(toPhone, listTitle, btnLabel, rows);
-}
-
-async function finalizeLead(fromPhone, userState, lang) {
-    try {
-        await syncLeadToOdoo(fromPhone, userState);
-        await syncLeadToSupabase(fromPhone, userState);
-
-        const thankMsg = (lang === 'gu') ?
-            `આપની પૂછપરછ સફળતાપૂર્વક નોંધાઈ ગઈ છે! 🙏\n\n👤 *નામ:* ${userState.name || 'Customer'}\n⚙️ *મશીન:* ${userState.hp || ''} (${userState.type || ''})\n📍 *સ્થળ:* ${userState.city || ''}, ${userState.state || ''}\n\nજય અંબે ફૂડ મશીનરીના સેલ્સ એક્ઝિક્યુટિવ *શ્રી અનિલ પંચાલ (9925343582)* ટૂંક સમયમાં બેસ્ટ કવોટેશન સાથે આપનો સંપર્ક કરશે.\n\n🌐 *અમારી વેબસાઇટ પર મશીનો જુઓ:* https://jayambefoodmachinery.com\n\nજો આપને આ મશીનનો લાઈવ ગ્રાઇન્ડીંગ વિડીયો જોવો હોય, તો અહીં 'વિડીયો' લખીને મોકલી શકો છો.` :
-            (lang === 'hi') ?
-            `आपकी पूछताछ सफलतापूर्वक दर्ज कर ली गई है! 🙏\n\n👤 *नाम:* ${userState.name || 'Customer'}\n⚙️ *मशीन:* ${userState.hp || ''} (${userState.type || ''})\n📍 *स्थान:* ${userState.city || ''}, ${userState.state || ''}\n\nजय अम्बे फूड मशीनरी के सेल्स एग्जीक्यूटिव *श्री अनिल पांचाल (9925343582)* जल्द ही आपसे सर्वोत्तम कोटेशन के साथ संपर्क करेंगे।\n\n🌐 *हमारी वेबसाइट पर मशीनें देखें:* https://jayambefoodmachinery.com\n\nयदि आप इस मशीन का लाइव ग्राइंडिंग वीडियो देखना चाहते हैं, तो यहाँ 'वीडियो' लिखकर भेज सकते हैं।` :
-            `Thank you for your inquiry! 🙏\n\n👤 *Name:* ${userState.name || 'Customer'}\n⚙️ *Machine:* ${userState.hp || ''} (${userState.type || ''})\n📍 *Location:* ${userState.city || ''}, ${userState.state || ''}\n\nOur Sales Executive *Mr. Anil Panchal (9925343582)* will contact you shortly with the best quote.\n\n🌐 *Explore machines on our website:* https://jayambefoodmachinery.com\n\nIf you would like to see live grinding demo videos, please type 'Video'.`;
-
-        await sendWhatsAppText(fromPhone, thankMsg);
-    } catch (e) {
-        console.error('finalizeLead error:', e.message);
-    }
-}
 
 // Helper: Send Interactive Buttons (Max 3)
 async function sendInteractiveButtons(toPhone, bodyText, buttons) {
@@ -573,7 +644,7 @@ function syncLeadToOdoo(phone, leadData) {
                 }
                 const models = xmlrpc.createSecureClient({ host: 'v1.viducrm.com', port: 443, path: '/xmlrpc/2/object' });
                 const leadRecord = {
-                    name: `WhatsApp Lead: ${leadData.name || 'New Customer'} - ${leadData.hp || 'Commercial Pulverizer'}`,
+                    name: `WhatsApp Lead: ${leadData.name || 'Customer'} - ${leadData.hp || '20 HP'} (${leadData.type || 'Commercial'})`,
                     contact_name: leadData.name || 'Customer',
                     mobile: phone,
                     phone: phone,
