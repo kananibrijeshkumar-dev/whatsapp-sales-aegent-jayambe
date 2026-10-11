@@ -225,7 +225,8 @@ async function pushToOdoo(phone, sessionData, userDetailsText) {
         
         if (uidMatch && uidMatch[1]) {
             const uid = uidMatch[1];
-            const parts = userDetailsText.split(/[,\\n\\- ]+/);
+            const parts = userDetailsText.split(/[\n, -]+/);
+
             const contactName = parts[0] ? parts[0].trim() : 'Unknown';
             const lang = sessionData.language || 'N/A';
             const phase = sessionData.phase || 'N/A';
