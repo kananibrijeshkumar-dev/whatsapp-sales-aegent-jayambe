@@ -45,42 +45,38 @@ const ODOO_DB = 'vicrm_prd_17';
 const ODOO_USER = 'jaf010@jayambe.net';
 const ODOO_PASS = '824e7ef8e28156d5b0137ae5ede2d09129e2f371';
 
-// Gemini Setup
-const GEMINI_API_KEY = "AQ.Ab8RN6L5euFhO0" + "YWyhPaRW8Z20NAyBaPHOmz7-5xr57nMAGEQw";
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({
-    model: "gemini-3.5-flash-lite",
-    systemInstruction: systemPrompt,
-    generationConfig: { temperature: 0.1 }
-});
-
-// State dictionaries for buttons
-const STATE_CITIES = {
-    'gu': {
-        'guj': { name: 'ગુજરાત', cities: ['અમદાવાદ', 'સુરત', 'વડોદરા', 'રાજકોટ', 'ભાવનગર', 'જામનગર', 'જૂનાગઢ', 'ગાંધીનગર'] },
-        'mah': { name: 'મહારાષ્ટ્ર', cities: ['મુંબઈ', 'પુણે', 'નાગપુર', 'નાશિક', 'ઔરંગાબાદ', 'કોલ્હાપુર', 'સોલાપુર', 'થાણે'] },
-        'raj': { name: 'રાજસ્થાન', cities: ['જયપુર', 'જોધપુર', 'કોટા', 'બિકાનેર', 'ઉદયપુર', 'અજમેર', 'ભીલવાડા', 'અલવર'] },
-        'mp':  { name: 'મધ્ય પ્રદેશ', cities: ['ઇન્દોર', 'ભોપાલ', 'જબલપુર', 'ગ્વાલિયર', 'ઉજ્જૈન', 'સાગર', 'દેવાસ', 'સતના'] },
-        'up':  { name: 'ઉત્તર પ્રદેશ', cities: ['લખનૌ', 'કાનપુર', 'વારાણસી', 'આગ્રા', 'પ્રયાગરાજ', 'મેરઠ', 'બરેલી', 'નોઇડા'] }
-    },
-    'hi': {
-        'guj': { name: 'गुजरात', cities: ['अहमदाबाद', 'सूरत', 'वडोदरा', 'राजकोट', 'भावनगर', 'जामनगर', 'जूनागढ़', 'गांधीनगर'] },
-        'mah': { name: 'महाराष्ट्र', cities: ['मुंबई', 'पुणे', 'नागपुर', 'नाशिक', 'औरंगाबाद', 'कोल्हापुर', 'सोलापुर', 'ठाणे'] },
-        'raj': { name: 'राजस्थान', cities: ['जयपुर', 'जोधपुर', 'कोटा', 'बीकानेर', 'उदयपुर', 'अजमेर', 'भीलवाड़ा', 'अलवर'] },
-        'mp':  { name: 'मध्य प्रदेश', cities: ['इंदौर', 'भोपाल', 'जबलपुर', 'ग्वालियर', 'उज्जैन', 'सागर', 'देवास', 'सतना'] },
-        'up':  { name: 'उत्तर प्रदेश', cities: ['लखनऊ', 'कानपुर', 'वाराणसी', 'आगरा', 'प्रयागराज', 'मेरठ', 'बरेली', 'नोएडा'] }
-    },
-    'en': {
-        'guj': { name: 'Gujarat', cities: ['Ahmedabad', 'Surat', 'Vadodara', 'Rajkot', 'Bhavnagar', 'Jamnagar', 'Junagadh', 'Gandhinagar'] },
-        'mah': { name: 'Maharashtra', cities: ['Mumbai', 'Pune', 'Nagpur', 'Nashik', 'Aurangabad', 'Kolhapur', 'Solapur', 'Thane'] },
-        'raj': { name: 'Rajasthan', cities: ['Jaipur', 'Jodhpur', 'Kota', 'Bikaner', 'Udaipur', 'Ajmer', 'Bhilwara', 'Alwar'] },
-        'mp':  { name: 'Madhya Pradesh', cities: ['Indore', 'Bhopal', 'Jabalpur', 'Gwalior', 'Ujjain', 'Sagar', 'Dewas', 'Satna'] },
-        'up':  { name: 'Uttar Pradesh', cities: ['Lucknow', 'Kanpur', 'Varanasi', 'Agra', 'Prayagraj', 'Meerut', 'Bareilly', 'Noida'] }
-    }
+// All States of India Alphabetically Grouped & Cities
+const ALL_STATES = {
+    'ag': [
+        { code: 'ap', name_en: 'Andhra Pradesh', name_hi: 'आंध्र प्रदेश', name_gu: 'આંધ્ર પ્રદેશ', cities_en: ['Visakhapatnam', 'Vijayawada', 'Guntur', 'Nellore', 'Kurnool', 'Rajahmundry', 'Tirupati'], cities_hi: ['विशाखापट्टनम', 'विजयवाड़ा', 'गुंटूर', 'नेल्लोर', 'कर्नूल', 'राजमुंदरी', 'तिरुपति'], cities_gu: ['વિશાખાપટ્ટનમ', 'વિજયવાડા', 'ગુંટુર', 'નેલ્લોર', 'કુર્નૂલ', 'રાજમુંદરી', 'તિરુપતિ'] },
+        { code: 'as', name_en: 'Assam', name_hi: 'असम', name_gu: 'અસમ', cities_en: ['Guwahati', 'Silchar', 'Dibrugarh', 'Jorhat', 'Nagaon', 'Tinsukia', 'Tezpur'], cities_hi: ['गुवाहाटी', 'सिलचर', 'डिब्रूगढ़', 'जोरहाट', 'नागांव', 'तिनसुकिया', 'तेजपुर'], cities_gu: ['ગુવાહાટી', 'સિલચર', 'ડિબ્રુગઢ', 'જોરહાટ', 'નાગાંવ', 'તિનસુકિયા', 'તેજપુર'] },
+        { code: 'br', name_en: 'Bihar', name_hi: 'बिहार', name_gu: 'બિહાર', cities_en: ['Patna', 'Gaya', 'Bhagalpur', 'Muzaffarpur', 'Purnia', 'Darbhanga', 'Arrah'], cities_hi: ['पटना', 'गया', 'भागलपुर', 'मुजफ्फरपुर', 'पूर्णिया', 'दरभंगा', 'आरा'], cities_gu: ['પટના', 'ગયા', 'ભાગલપુર', 'મુઝફ્ફરપુર', 'પૂર્ણિયા', 'દરભંગા', 'આરા'] },
+        { code: 'cg', name_en: 'Chhattisgarh', name_hi: 'छत्तीसगढ़', name_gu: 'છત્તીસગઢ', cities_en: ['Raipur', 'Bhilai', 'Bilaspur', 'Korba', 'Rajnandgaon', 'Jagdalpur', 'Raigarh'], cities_hi: ['रायपुर', 'भिलाई', 'बिलासपुर', 'कोरबा', 'राजनांदगांव', 'जगदलपुर', 'रायगढ़'], cities_gu: ['રાયપુર', 'ભિલાઈ', 'બિલાસપુર', 'કોરબા', 'રાજનાંદગાંવ', 'જગદલપુર', 'રાયગઢ'] },
+        { code: 'dl', name_en: 'Delhi', name_hi: 'दिल्ली', name_gu: 'દિલ્હી', cities_en: ['New Delhi', 'North Delhi', 'South Delhi', 'West Delhi', 'East Delhi', 'Rohini', 'Dwarka'], cities_hi: ['नई दिल्ली', 'उत्तर दिल्ली', 'दक्षिण दिल्ली', 'पश्चिम दिल्ली', 'पूर्वी दिल्ली', 'रोहिणी', 'द्वारका'], cities_gu: ['નવી દિલ્હી', 'ઉત્તર દિલ્હી', 'દક્ષિણ દિલ્હી', 'પશ્ચિમ દિલ્હી', 'પૂર્વ દિલ્હી', 'રોહિણી', 'દ્વારકા'] },
+        { code: 'ga', name_en: 'Goa', name_hi: 'गोवा', name_gu: 'ગોવા', cities_en: ['Panaji', 'Margao', 'Vasco da Gama', 'Mapusa', 'Ponda'], cities_hi: ['पणजी', 'मडगांव', 'वास्को', 'मापुसा', 'पोंडा'], cities_gu: ['પણજી', 'મડગાંવ', 'વાસ્કો', 'માપુસા', 'પોંડા'] },
+        { code: 'gj', name_en: 'Gujarat', name_hi: 'गुजरात', name_gu: 'ગુજરાત', cities_en: ['Ahmedabad', 'Surat', 'Vadodara', 'Rajkot', 'Bhavnagar', 'Jamnagar', 'Junagadh', 'Gandhinagar'], cities_hi: ['अहमदाबाद', 'सूरत', 'वडोदरा', 'राजकोट', 'भावनगर', 'जामनगर', 'जूनागढ़', 'गांधीनगर'], cities_gu: ['અમદાવાદ', 'સુરત', 'વડોદરા', 'રાજકોટ', 'ભાવનગર', 'જામનગર', 'જૂનાગઢ', 'ગાંધીનગર'] }
+    ],
+    'hm': [
+        { code: 'hr', name_en: 'Haryana', name_hi: 'हरियाणा', name_gu: 'હરિયાણા', cities_en: ['Faridabad', 'Gurugram', 'Panipat', 'Ambala', 'Yamunanagar', 'Rohtak', 'Hisar', 'Karnal'], cities_hi: ['फरीदाबाद', 'गुरुग्राम', 'पानीपत', 'अंबाला', 'यमुनानगर', 'रोहतक', 'हिसार', 'करनाल'], cities_gu: ['ફરીદાબાદ', 'ગુરુગ્રામ', 'પાણીપત', 'અંબાલા', 'યમુનાનગર', 'રોહતક', 'હિસાર', 'કરનાલ'] },
+        { code: 'hp', name_en: 'Himachal Pradesh', name_hi: 'हिमाचल प्रदेश', name_gu: 'હિમાચલ પ્રદેશ', cities_en: ['Shimla', 'Dharamshala', 'Solan', 'Mandi', 'Baddi', 'Kullu', 'Bilaspur'], cities_hi: ['शिमला', 'धर्मशाला', 'सोलन', 'मंडी', 'बद्दी', 'कुल्लू', 'बिलासपुर'], cities_gu: ['શિમલા', 'ધર્મશાળા', 'સોલન', 'મંડી', 'બદ્દી', 'કુલ્લુ', 'બિલાસપુર'] },
+        { code: 'jh', name_en: 'Jharkhand', name_hi: 'झारखंड', name_gu: 'ઝારખંડ', cities_en: ['Ranchi', 'Jamshedpur', 'Dhanbad', 'Bokaro', 'Deoghar', 'Hazaribagh', 'Giridih'], cities_hi: ['रांची', 'जमशेदपुर', 'धनबाद', 'बोकारो', 'देवघर', 'हजारीबाग', 'गिरिडीह'], cities_gu: ['રાંચી', 'જમશેદપુર', 'ધનબાદ', 'બોકારો', 'દેવઘર', 'હઝારીબાગ', 'ગિરિડીહ'] },
+        { code: 'ka', name_en: 'Karnataka', name_hi: 'कर्नाटक', name_gu: 'કર્ણાટક', cities_en: ['Bengaluru', 'Mysuru', 'Hubballi', 'Belagavi', 'Mangaluru', 'Davanagere', 'Ballari'], cities_hi: ['बेंगलुरु', 'मैसूरु', 'हुबली', 'बेलगावी', 'मंगलुरु', 'दावणगेरे', 'बेल्लारी'], cities_gu: ['બેંગલુરુ', 'મૈસુર', 'હુબળી', 'બેલગામ', 'મંગલોર', 'દાવણગેરે', 'બલ્લારી'] },
+        { code: 'kl', name_en: 'Kerala', name_hi: 'केरल', name_gu: 'કેરળ', cities_en: ['Thiruvananthapuram', 'Kochi', 'Kozhikode', 'Thrissur', 'Kollam', 'Palakkad', 'Kannur'], cities_hi: ['तिरुवनंतपुरम', 'कोच्चि', 'कोझिकोड', 'त्रिशूर', 'कोल्लम', 'पालक्काड़', 'कन्नूर'], cities_gu: ['તિરુવનંતપુરમ', 'કોચી', 'કોઝિકોડ', 'ત્રિશૂર', 'કોલ્લમ', 'પાલક્કડ', 'કન્નુર'] },
+        { code: 'mp', name_en: 'Madhya Pradesh', name_hi: 'मध्य प्रदेश', name_gu: 'મધ્ય પ્રદેશ', cities_en: ['Indore', 'Bhopal', 'Jabalpur', 'Gwalior', 'Ujjain', 'Sagar', 'Dewas', 'Satna'], cities_hi: ['इंदौर', 'भोपाल', 'जबलपुर', 'ग्वालियर', 'उज्जैन', 'सागर', 'देवास', 'सतना'], cities_gu: ['ઇન્દોર', 'ભોપાલ', 'જબલપુર', 'ગ્વાલિયર', 'ઉજ્જૈન', 'સાગર', 'દેવાસ', 'સતના'] },
+        { code: 'mh', name_en: 'Maharashtra', name_hi: 'महाराष्ट्र', name_gu: 'મહારાષ્ટ્ર', cities_en: ['Mumbai', 'Pune', 'Nagpur', 'Nashik', 'Aurangabad', 'Kolhapur', 'Solapur', 'Thane'], cities_hi: ['मुंबई', 'पुणे', 'नागपुर', 'नाशिक', 'औरंगाबाद', 'कोल्हापुर', 'सोलापुर', 'ठाणे'], cities_gu: ['મુંબઈ', 'પુણે', 'નાગપુર', 'નાશિક', 'ઔરંગાબાદ', 'કોલ્હાપુર', 'સોલાપુર', 'થાણે'] }
+    ],
+    'oz': [
+        { code: 'od', name_en: 'Odisha', name_hi: 'ओडिशा', name_gu: 'ઓડિશા', cities_en: ['Bhubaneswar', 'Cuttack', 'Rourkela', 'Berhampur', 'Sambalpur', 'Puri', 'Balasore'], cities_hi: ['भुवनेश्वर', 'कटक', 'राउरकेला', 'बरहामपुर', 'संबलपुर', 'पुरी', 'बालेश्वर'], cities_gu: ['ભુવનેશ્વર', 'કટક', 'રાઉરકેલા', 'બરહામપુર', 'સંબલપુર', 'પુરી', 'બાલેશ્વર'] },
+        { code: 'pb', name_en: 'Punjab', name_hi: 'पंजाब', name_gu: 'પંજાબ', cities_en: ['Ludhiana', 'Amritsar', 'Jalandhar', 'Patiala', 'Bathinda', 'Mohali', 'Hoshiarpur'], cities_hi: ['लुधियाना', 'अमृतसर', 'जालंधर', 'पटियाला', 'बठिंडा', 'मोहाली', 'होशियारपुर'], cities_gu: ['લુધિયાણા', 'અમૃતસર', 'જલંધર', 'પટિયાલા', 'બઠિંડા', 'મોહાલી', 'હોશિયારપુર'] },
+        { code: 'rj', name_en: 'Rajasthan', name_hi: 'राजस्थान', name_gu: 'રાજસ્થાન', cities_en: ['Jaipur', 'Jodhpur', 'Kota', 'Bikaner', 'Udaipur', 'Ajmer', 'Bhilwara', 'Alwar'], cities_hi: ['जयपुर', 'जोधपुर', 'कोटा', 'बीकानेर', 'उदयपुर', 'अजमेर', 'भीलवाड़ा', 'अलवर'], cities_gu: ['જયપુર', 'જોધપુર', 'કોટા', 'બિકાનેર', 'ઉદયપુર', 'અજમેર', 'ભીલવાડા', 'અલવર'] },
+        { code: 'tn', name_en: 'Tamil Nadu', name_hi: 'तमिलनाडु', name_gu: 'તમિલનાડુ', cities_en: ['Chennai', 'Coimbatore', 'Madurai', 'Tiruchirappalli', 'Salem', 'Tiruppur', 'Erode'], cities_hi: ['चेन्नई', 'कोयंबटूर', 'मदुरै', 'तिरुचिरापल्ली', 'सलेम', 'तिरुपूर', 'इरोड'], cities_gu: ['ચેન્નાઈ', 'કોયમ્બતૂર', 'મદુરાઈ', 'તિરુચિરાપલ્લી', 'સાલેમ', 'તિરુપુર', 'ઈરોડ'] },
+        { code: 'tg', name_en: 'Telangana', name_hi: 'तेलंगाना', name_gu: 'તેલંગાણા', cities_en: ['Hyderabad', 'Warangal', 'Nizamabad', 'Khammam', 'Karimnagar', 'Ramagundam'], cities_hi: ['हैदराबाद', 'वारंगल', 'निजामाबाद', 'खम्मम', 'करीमनगर', 'रामागुंडम'], cities_gu: ['હૈદરાબાદ', 'વારંગલ', 'નિઝામાબાદ', 'ખમ્મમ', 'કરીમનગર', 'રામાગુંડમ'] },
+        { code: 'up', name_en: 'Uttar Pradesh', name_hi: 'उत्तर प्रदेश', name_gu: 'ઉત્તર પ્રદેશ', cities_en: ['Lucknow', 'Kanpur', 'Varanasi', 'Agra', 'Prayagraj', 'Meerut', 'Bareilly', 'Noida'], cities_hi: ['लखनऊ', 'कानपुर', 'वाराणसी', 'आगरा', 'प्रयागराज', 'मेरठ', 'बरेली', 'नोएडा'], cities_gu: ['લખનૌ', 'કાનપુર', 'વારાણસી', 'આગ્રા', 'પ્રયાગરાજ', 'મેરઠ', 'બરેલી', 'નોઇડા'] },
+        { code: 'wb', name_en: 'West Bengal', name_hi: 'पश्चिम बंगाल', name_gu: 'પશ્ચિમ બંગાળ', cities_en: ['Kolkata', 'Howrah', 'Durgapur', 'Asansol', 'Siliguri', 'Bardhaman', 'Malda'], cities_hi: ['कोलकाता', 'हावड़ा', 'दुर्गापुर', 'आसनसोल', 'सिलीगुड़ी', 'बर्दवान', 'मालदा'], cities_gu: ['કોલકાતા', 'હાવડા', 'દુર્ગાપુર', 'આસનસોલ', 'સિલીગુડી', 'બર્ધમાન', 'માલદા'] }
+    ]
 };
 
 const processedMessages = new Set();
-// Global in-memory cache
 global.customerState = global.customerState || {};
 
 app.get('/', (req, res) => {
@@ -254,7 +250,7 @@ app.post('/webhook', async (req, res) => {
                           'Do you need With Cyclone or Standard?';
 
             await sendInteractiveButtons(fromPhone, qText, [
-                { id: `type_std_${lang}`, title: (lang === 'gu') ? 'સ્ટાન્ડર્ડ' : (lang === 'hi') ? 'साधारण' : 'Standard' },
+                { id: `type_std_${lang}`, title: (lang === 'gu') ? 'સ્ટાન્ડર્ડ' : (lang === 'hi') ? 'સાધારણ' : 'Standard' },
                 { id: `type_cyc_${lang}`, title: (lang === 'gu') ? 'સાયક્લોન સાથે' : (lang === 'hi') ? 'साइक्लोन के साथ' : 'With Cyclone' },
                 { id: `type_both_${lang}`, title: (lang === 'gu') ? 'બંને ઓપ્શન' : (lang === 'hi') ? 'दोनों विकल्प' : 'Show Both' }
             ]);
@@ -277,7 +273,6 @@ app.post('/webhook', async (req, res) => {
                             'Select HP Capacity:';
             const btnLabel = (lang === 'gu') ? 'HP પસંદ કરો' : (lang === 'hi') ? 'HP चुनें' : 'Select HP';
 
-            // Encode HP, Type, and Language in ID: e.g. hp_25_cyc_hi
             const hpList = [
                 { id: `hp_5_${typeCode}_${lang}`, title: '5 HP' },
                 { id: `hp_75_${typeCode}_${lang}`, title: '7.5 HP' },
@@ -321,20 +316,48 @@ app.post('/webhook', async (req, res) => {
             return res.sendStatus(200);
         }
 
-        // 7. STATE CHOSEN -> Auto-detect and show Cities
-        if (interactiveId.startsWith('st_')) {
-            const parts = interactiveId.split('_'); // st, stateKey, lang
-            const stKey = parts[1] || 'guj';
+        // 7. ALPHABETICAL STATE GROUP SELECTED (A-G, H-M, O-Z)
+        if (interactiveId.startsWith('stgrp_')) {
+            const parts = interactiveId.split('_'); // stgrp, ag/hm/oz, lang
+            const grpKey = parts[1];
             const lang = parts[2] || userState.lang || 'en';
+
+            userState.lang = lang;
+            userState.step = 'STATE_SELECT';
+            global.customerState[fromPhone] = userState;
+
+            const statesList = ALL_STATES[grpKey] || ALL_STATES['ag'];
+            const promptTitle = (lang === 'gu') ? 'આપનું રાજ્ય પસંદ કરો:' :
+                                (lang === 'hi') ? 'अपना राज्य चुनें:' :
+                                'Select your State:';
+            const btnLabel = (lang === 'gu') ? 'રાજ્ય પસંદ કરો' : (lang === 'hi') ? 'राज्य चुनें' : 'Select State';
+
+            const rows = statesList.map(st => ({
+                id: `st_${st.code}_${grpKey}_${lang}`,
+                title: (lang === 'gu' ? st.name_gu : lang === 'hi' ? st.name_hi : st.name_en).substring(0, 24)
+            }));
+
+            await sendInteractiveList(fromPhone, promptTitle, btnLabel, rows);
+            return res.sendStatus(200);
+        }
+
+        // 8. STATE CHOSEN -> Show Cities of that State
+        if (interactiveId.startsWith('st_')) {
+            const parts = interactiveId.split('_'); // st, code, grpKey, lang
+            const stCode = parts[1];
+            const grpKey = parts[2];
+            const lang = parts[3] || userState.lang || 'en';
 
             userState.lang = lang;
             userState.state = incomingText;
             userState.step = 'CITY';
             global.customerState[fromPhone] = userState;
 
-            const stateData = STATE_CITIES[lang]?.[stKey] || STATE_CITIES['en']?.[stKey];
+            const grpStates = ALL_STATES[grpKey] || [];
+            const matchedState = grpStates.find(s => s.code === stCode);
 
-            if (stateData && stateData.cities) {
+            if (matchedState) {
+                const cities = (lang === 'gu' ? matchedState.cities_gu : lang === 'hi' ? matchedState.cities_hi : matchedState.cities_en) || [];
                 const cityPrompt = (lang === 'gu') ? 
                     `આપનું રાજ્ય *${incomingText}* પસંદ થયું છે. આપનું શહેર પસંદ કરો:` :
                     (lang === 'hi') ?
@@ -342,9 +365,9 @@ app.post('/webhook', async (req, res) => {
                     `State: *${incomingText}*. Please tap your City:`;
                 const btnLabel = (lang === 'gu') ? 'શહેર પસંદ કરો' : (lang === 'hi') ? 'शहर चुनें' : 'Select City';
 
-                const cityOptions = stateData.cities.slice(0, 10).map((c, idx) => ({
+                const cityOptions = cities.slice(0, 10).map((c, idx) => ({
                     id: `ct_${idx}_${lang}`,
-                    title: c
+                    title: c.substring(0, 24)
                 }));
 
                 await sendInteractiveList(fromPhone, cityPrompt, btnLabel, cityOptions);
@@ -352,7 +375,7 @@ app.post('/webhook', async (req, res) => {
             }
         }
 
-        // 8. CITY CHOSEN VIA TAP -> Finalize
+        // 9. CITY CHOSEN VIA TAP -> Finalize
         if (interactiveId.startsWith('ct_')) {
             const parts = interactiveId.split('_');
             const lang = parts[2] || userState.lang || 'en';
@@ -391,39 +414,22 @@ app.post('/webhook', async (req, res) => {
                 return res.sendStatus(200);
             }
 
-            // Otherwise, user typed their NAME!
+            // Otherwise, user typed their NAME -> Show Alphabetical State Groups A-G, H-M, O-Z
             userState.name = incomingText;
-            userState.step = 'STATE';
+            userState.step = 'STATE_GROUP';
             global.customerState[fromPhone] = userState;
 
             const statePrompt = (lang === 'gu') ? 
-                `આભાર ${userState.name} જી! કૃપા કરીને આપનું રાજ્ય પસંદ કરો:` :
+                `આભાર ${userState.name} જી! આપનું રાજ્ય કયા અક્ષરથી શરૂ થાય છે? તે પસંદ કરો:` :
                 (lang === 'hi') ?
-                `धन्यवाद ${userState.name} जी! कृपया अपना राज्य चुनें:` :
-                `Thank you ${userState.name}! Please tap your State:`;
-            const btnLabel = (lang === 'gu') ? 'રાજ્ય પસંદ કરો' : (lang === 'hi') ? 'राज्य चुनें' : 'Select State';
+                `धन्यवाद ${userState.name} जी! आपका राज्य किस अक्षर से शुरू होता है? चुनें:` :
+                `Thank you ${userState.name}! Please choose your State group:`;
 
-            const stateList = (lang === 'gu') ? [
-                { id: 'st_guj_gu', title: 'ગુજરાત' },
-                { id: 'st_mah_gu', title: 'મહારાષ્ટ્ર' },
-                { id: 'st_raj_gu', title: 'રાજસ્થાન' },
-                { id: 'st_mp_gu', title: 'મધ્ય પ્રદેશ' },
-                { id: 'st_up_gu', title: 'ઉત્તર પ્રદેશ' }
-            ] : (lang === 'hi') ? [
-                { id: 'st_guj_hi', title: 'गुजरात' },
-                { id: 'st_mah_hi', title: 'महाराष्ट्र' },
-                { id: 'st_raj_hi', title: 'राजस्थान' },
-                { id: 'st_mp_hi', title: 'मध्य प्रदेश' },
-                { id: 'st_up_hi', title: 'उत्तर प्रदेश' }
-            ] : [
-                { id: 'st_guj_en', title: 'Gujarat' },
-                { id: 'st_mah_en', title: 'Maharashtra' },
-                { id: 'st_raj_en', title: 'Rajasthan' },
-                { id: 'st_mp_en', title: 'Madhya Pradesh' },
-                { id: 'st_up_en', title: 'Uttar Pradesh' }
-            ];
-
-            await sendInteractiveList(fromPhone, statePrompt, btnLabel, stateList);
+            await sendInteractiveButtons(fromPhone, statePrompt, [
+                { id: `stgrp_ag_${lang}`, title: 'A to G States' },
+                { id: `stgrp_hm_${lang}`, title: 'H to M States' },
+                { id: `stgrp_oz_${lang}`, title: 'O to Z States' }
+            ]);
             return res.sendStatus(200);
         }
 
