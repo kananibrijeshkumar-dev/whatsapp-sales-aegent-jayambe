@@ -368,13 +368,18 @@ app.post('/webhook', async (req, res) => {
         if (messageObj.type === 'text') {
             const lang = userState.lang || 'hi';
 
-            // Check if user is asking for photo/video
-            if (lower.includes('photo') || lower.includes('image') || lower.includes('ફોટો') || lower.includes('फोटो')) {
-                await sendWhatsAppText(fromPhone, "Here is our machine photo gallery: https://jayambefoodmachinery.com/media/\n\nYou can browse 5 HP to 30 HP commercial pulverizers with cyclone on our website!");
-                return res.sendStatus(200);
-            }
-            if (lower.includes('video') || lower.includes('youtube') || lower.includes('facebook') || lower.includes('વિડીયો') || lower.includes('वीडियो')) {
-                await sendWhatsAppText(fromPhone, "Watch live grinding demo videos here:\n\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/");
+            // If user asks for video or photo or mentions links
+            if (lower.includes('video') || lower.includes('વિડીયો') || lower.includes('वीडियो') ||
+                lower.includes('photo') || lower.includes('image') || lower.includes('ફોટો') || lower.includes('फोटो') ||
+                lower.includes('youtube') || lower.includes('facebook') || userState.step === 'COMPLETED') {
+                
+                const mediaMsg = (lang === 'gu') ?
+                    `અમારા મશીનોના લાઈવ ગ્રાઇન્ડીંગ ડેમો વિડીયો અહીં જુઓ:\n\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Website:* https://jayambefoodmachinery.com\n\nકોઈપણ માહિતી કે કવોટેશન માટે સંપર્ક કરો:\n📞 શ્રી અનિલ પંચાલ (+91 9925343582)` :
+                    (lang === 'hi') ?
+                    `हमारी मशीनों के लाइव ग्राइंडिंग डेमो वीडियो यहाँ देखें:\n\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Website:* https://jayambefoodmachinery.com\n\nकिसी भी जानकारी या कोटेशन के लिए संपर्क करें:\n📞 श्री अनिल पांचाल (+91 9925343582)` :
+                    `Watch our live grinding demo videos here:\n\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Website:* https://jayambefoodmachinery.com\n\nFor any inquiries or quotations, contact:\n📞 Mr. Anil Panchal (+91 9925343582)`;
+
+                await sendWhatsAppText(fromPhone, mediaMsg);
                 return res.sendStatus(200);
             }
 
@@ -435,10 +440,10 @@ async function finalizeLead(fromPhone, userState, lang) {
         await syncLeadToSupabase(fromPhone, userState);
 
         const thankMsg = (lang === 'gu') ?
-            `આપની પૂછપરછ સફળતાપૂર્વક નોંધાઈ ગઈ છે! 🙏\n\n👤 *નામ:* ${userState.name || 'Customer'}\n⚙️ *મશીન:* ${userState.hp || ''} (${userState.type || ''})\n📍 *સ્થળ:* ${userState.city || ''}, ${userState.state || ''}\n\nજય અંબે ફૂડ મશીનરીના સેલ્સ એક્ઝિક્યુટિવ *શ્રી અનિલ પંચાલ (9925343582)* ટૂંક સમયમાં બેસ્ટ કવોટેશન સાથે આપનો સંપર્ક કરશે.\n\nજો આપને આ મશીનનો ફોટો કે વિડીયો જોવો હોય તો અહીં 'ફોટો' અથવા 'વિડીયો' લખીને મોકલી શકો છો.` :
+            `આપની પૂછપરછ સફળતાપૂર્વક નોંધાઈ ગઈ છે! 🙏\n\n👤 *નામ:* ${userState.name || 'Customer'}\n⚙️ *મશીન:* ${userState.hp || ''} (${userState.type || ''})\n📍 *સ્થળ:* ${userState.city || ''}, ${userState.state || ''}\n\nજય અંબે ફૂડ મશીનરીના સેલ્સ એક્ઝિક્યુટિવ *શ્રી અનિલ પંચાલ (9925343582)* ટૂંક સમયમાં બેસ્ટ કવોટેશન સાથે આપનો સંપર્ક કરશે.\n\n🌐 *અમારી વેબસાઇટ પર મશીનો જુઓ:* https://jayambefoodmachinery.com\n\nજો આપને આ મશીનનો લાઈવ ગ્રાઇન્ડીંગ વિડીયો જોવો હોય, તો અહીં 'વિડીયો' લખીને મોકલી શકો છો.` :
             (lang === 'hi') ?
-            `आपकी पूछताछ सफलतापूर्वक दर्ज कर ली गई है! 🙏\n\n👤 *नाम:* ${userState.name || 'Customer'}\n⚙️ *मशीन:* ${userState.hp || ''} (${userState.type || ''})\n📍 *स्थान:* ${userState.city || ''}, ${userState.state || ''}\n\nजय अम्बे फूड मशीनरी के सेल्स एग्जीक्यूटिव *श्री अनिल पांचाल (9925343582)* जल्द ही आपसे सर्वोत्तम कोटेशन के साथ संपर्क करेंगे।\n\nयदि आप मशीन का फोटो या वीडियो देखना चाहते हैं, तो 'फोटो' या 'वीडियो' लिखकर भेज सकते हैं।` :
-            `Thank you for your inquiry! 🙏\n\n👤 *Name:* ${userState.name || 'Customer'}\n⚙️ *Machine:* ${userState.hp || ''} (${userState.type || ''})\n📍 *Location:* ${userState.city || ''}, ${userState.state || ''}\n\nOur Sales Executive *Mr. Anil Panchal (9925343582)* will contact you shortly with the best quote.\n\nIf you would like to see machine photos or demo videos, please type 'Photo' or 'Video'.`;
+            `आपकी पूछताछ सफलतापूर्वक दर्ज कर ली गई है! 🙏\n\n👤 *नाम:* ${userState.name || 'Customer'}\n⚙️ *मशीन:* ${userState.hp || ''} (${userState.type || ''})\n📍 *स्थान:* ${userState.city || ''}, ${userState.state || ''}\n\nजय अम्बे फूड मशीनरी के सेल्स एग्जीक्यूटिव *श्री अनिल पांचाल (9925343582)* जल्द ही आपसे सर्वोत्तम कोटेशन के साथ संपर्क करेंगे।\n\n🌐 *हमारी वेबसाइट पर मशीनें देखें:* https://jayambefoodmachinery.com\n\nयदि आप इस मशीन का लाइव ग्राइंडिंग वीडियो देखना चाहते हैं, तो यहाँ 'वीडियो' लिखकर भेज सकते हैं।` :
+            `Thank you for your inquiry! 🙏\n\n👤 *Name:* ${userState.name || 'Customer'}\n⚙️ *Machine:* ${userState.hp || ''} (${userState.type || ''})\n📍 *Location:* ${userState.city || ''}, ${userState.state || ''}\n\nOur Sales Executive *Mr. Anil Panchal (9925343582)* will contact you shortly with the best quote.\n\n🌐 *Explore machines on our website:* https://jayambefoodmachinery.com\n\nIf you would like to see live grinding demo videos, please type 'Video'.`;
 
         await sendWhatsAppText(fromPhone, thankMsg);
     } catch (e) {
