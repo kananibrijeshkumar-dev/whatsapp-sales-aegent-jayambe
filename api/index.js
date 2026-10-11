@@ -49,12 +49,13 @@ const qstashClient = new Client({
 // Initialize Gemini AI with your systemPrompt
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
+    model: "gemini-3.5-flash-lite",
     systemInstruction: systemPrompt,
     generationConfig: {
         temperature: 0.1
     }
 });
+
 
 const userSessions = {};
 const processedMessages = new Set();
