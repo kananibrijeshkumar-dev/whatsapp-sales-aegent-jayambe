@@ -46,7 +46,7 @@ const qstashClient = new Client({
     baseUrl: process.env.QSTASH_URL || "https://qstash-us-east-1.upstash.io"
 });
 
-// Initialize Gemini AI with your systemPrompt
+// Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({
     model: "gemini-3.5-flash-lite",
@@ -55,7 +55,6 @@ const model = genAI.getGenerativeModel({
         temperature: 0.1
     }
 });
-
 
 const userSessions = {};
 const processedMessages = new Set();
@@ -103,9 +102,12 @@ app.post('/webhook', async (req, res) => {
 
                 const fromPhone = messageObj.from;
                 let msgBody = "";
+                let isButton = false;
+
                 if (messageObj.type === 'text') {
-                    msgBody = messageObj.text.body;
+                    msgBody = messageObj.text.body.trim();
                 } else if (messageObj.type === 'interactive') {
+                    isButton = true;
                     if (messageObj.interactive.type === 'button_reply') {
                         msgBody = messageObj.interactive.button_reply.title;
                     } else if (messageObj.interactive.type === 'list_reply') {
@@ -117,7 +119,7 @@ app.post('/webhook', async (req, res) => {
 
                 console.log(`Received message from ${fromPhone}: ${msgBody}`);
 
-                // 1. Save to Supabase
+                // Save to Supabase
                 if (supabase) {
                     try {
                         const { data: existingCustomer } = await supabase.from('whatsapp_customers').select('phone').eq('phone', fromPhone).maybeSingle();
@@ -131,10 +133,22 @@ app.post('/webhook', async (req, res) => {
                     }
                 }
 
-                // 2. Generate Gemini AI Response
+                // TAP BUTTON TRIGGER: If user says "hi" or "hello", send the Tap Box buttons!
+                const lowerText = msgBody.toLowerCase();
+                if (!isButton && (lowerText === 'hi' || lowerText === 'hello' || lowerText === 'hey')) {
+                    delete userSessions[fromPhone]; // Reset session
+                    await sendInteractiveButtons(fromPhone, "Welcome to Jay Shree Ambe Food Machinery! 🙏\n\nPlease tap your preferred language / ભાષા પસંદ કરો / भाषा चुनें:", [
+                        { id: 'lang_en', title: 'English' },
+                        { id: 'lang_hi', title: 'Hindi (हिंदी)' },
+                        { id: 'lang_gu', title: 'Gujarati (ગુજરાતી)' }
+                    ]);
+                    return res.sendStatus(200);
+                }
+
+                // Generate AI Response using Gemini
                 let aiResponse = await generateAIResponse(fromPhone, msgBody);
 
-                // 3. Extract customer lead data
+                // Extract customer lead data
                 const dataMatch = aiResponse.match(/\[DATA:\s*(\{.*?\})\s*\]/s);
                 if (dataMatch && supabase) {
                     try {
@@ -147,10 +161,9 @@ app.post('/webhook', async (req, res) => {
                         
                         if (Object.keys(updatePayload).length > 0) {
                             await supabase.from('whatsapp_customers').update(updatePayload).eq('phone', fromPhone);
-                            console.log(`Updated customer data in Supabase:`, updatePayload);
                         }
 
-                        // 4. Push to Odoo CRM
+                        // Push to Odoo CRM
                         const ODOO_URL = "https://v1.viducrm.com";
                         const ODOO_DB = "vicrm_prd_17";
                         const ODOO_LOGIN = "jaf010@jayambe.net";
@@ -200,7 +213,7 @@ app.post('/webhook', async (req, res) => {
                     }
                 }
 
-                // 5. Send WhatsApp Reply
+                // Send WhatsApp Reply
                 await sendWhatsAppMessage(fromPhone, aiResponse);
             }
             res.sendStatus(200);
@@ -235,7 +248,37 @@ async function generateAIResponse(senderId, messageText) {
         return replyText;
     } catch (error) {
         console.error("AI Generation Error:", error.message);
-        return "SYSTEM ERROR: " + error.message + "\nPlease call us at +91 7201890711 for immediate assistance.";
+        return "SYSTEM ERROR: " + error.message;
+    }
+}
+
+async function sendInteractiveButtons(toPhone, bodyText, buttons) {
+    try {
+        const formattedButtons = buttons.map(b => ({
+            type: 'reply',
+            reply: { id: String(b.id), title: String(b.title) }
+        }));
+
+        await axios({
+            method: 'POST',
+            url: `https://graph.facebook.com/v18.0/${PHONE_NUMBER_ID}/messages`,
+            data: {
+                messaging_product: 'whatsapp',
+                to: toPhone,
+                type: 'interactive',
+                interactive: {
+                    type: 'button',
+                    body: { text: bodyText },
+                    action: { buttons: formattedButtons }
+                }
+            },
+            headers: {
+                'Authorization': `Bearer ${WHATSAPP_TOKEN}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    } catch (e) {
+        console.error('Error sending interactive buttons:', e.response ? e.response.data : e.message);
     }
 }
 
