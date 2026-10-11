@@ -54,68 +54,34 @@ const model = genAI.getGenerativeModel({
     generationConfig: { temperature: 0.1 }
 });
 
-const processedMessages = new Set();
-
-// City datasets for State Tap selection (Native Language)
+// State dictionaries for buttons
 const STATE_CITIES = {
     'gu': {
-        'st_guj': { name: 'ગુજરાત', cities: ['અમદાવાદ', 'સુરત', 'વડોદરા', 'રાજકોટ', 'ભાવનગર', 'જામનગર', 'જૂનાગઢ', 'ગાંધીનગર'] },
-        'st_mah': { name: 'મહારાષ્ટ્ર', cities: ['મુંબઈ', 'પુણે', 'નાગપુર', 'નાશિક', 'ઔરંગાબાદ', 'કોલ્હાપુર', 'સોલાપુર', 'થાણે'] },
-        'st_raj': { name: 'રાજસ્થાન', cities: ['જયપુર', 'જોધપુર', 'કોટા', 'બિકાનેર', 'ઉદયપુર', 'અજમેર', 'ભીલવાડા', 'અલવર'] },
-        'st_mp': { name: 'મધ્ય પ્રદેશ', cities: ['ઇન્દોર', 'ભોપાલ', 'જબલપુર', 'ગ્વાલિયર', 'ઉજ્જૈન', 'સાગર', 'દેવાસ', 'સતના'] },
-        'st_up': { name: 'ઉત્તર પ્રદેશ', cities: ['લખનૌ', 'કાનપુર', 'વારાણસી', 'આગ્રા', 'પ્રયાગરાજ', 'મેરઠ', 'બરેલી', 'નોઇડા'] }
+        'guj': { name: 'ગુજરાત', cities: ['અમદાવાદ', 'સુરત', 'વડોદરા', 'રાજકોટ', 'ભાવનગર', 'જામનગર', 'જૂનાગઢ', 'ગાંધીનગર'] },
+        'mah': { name: 'મહારાષ્ટ્ર', cities: ['મુંબઈ', 'પુણે', 'નાગપુર', 'નાશિક', 'ઔરંગાબાદ', 'કોલ્હાપુર', 'સોલાપુર', 'થાણે'] },
+        'raj': { name: 'રાજસ્થાન', cities: ['જયપુર', 'જોધપુર', 'કોટા', 'બિકાનેર', 'ઉદયપુર', 'અજમેર', 'ભીલવાડા', 'અલવર'] },
+        'mp':  { name: 'મધ્ય પ્રદેશ', cities: ['ઇન્દોર', 'ભોપાલ', 'જબલપુર', 'ગ્વાલિયર', 'ઉજ્જૈન', 'સાગર', 'દેવાસ', 'સતના'] },
+        'up':  { name: 'ઉત્તર પ્રદેશ', cities: ['લખનૌ', 'કાનપુર', 'વારાણસી', 'આગ્રા', 'પ્રયાગરાજ', 'મેરઠ', 'બરેલી', 'નોઇડા'] }
     },
     'hi': {
-        'st_guj': { name: 'गुजरात', cities: ['अहमदाबाद', 'सूरत', 'वडोदरा', 'राजकोट', 'भावनगर', 'जामनगर', 'जूनागढ़', 'गांधीनगर'] },
-        'st_mah': { name: 'महाराष्ट्र', cities: ['मुंबई', 'पुणे', 'नागपुर', 'नाशिक', 'औरंगाबाद', 'कोल्हापुर', 'सोलापुर', 'ठाणे'] },
-        'st_raj': { name: 'राजस्थान', cities: ['जयपुर', 'जोधपुर', 'कोटा', 'बीकानेर', 'उदयपुर', 'अजमेर', 'भीलवाड़ा', 'अलवर'] },
-        'st_mp': { name: 'मध्य प्रदेश', cities: ['इंदौर', 'भोपाल', 'जबलपुर', 'ग्वालियर', 'उज्जैन', 'सागर', 'देवास', 'सतना'] },
-        'st_up': { name: 'उत्तर प्रदेश', cities: ['लखनऊ', 'कानपुर', 'वाराणसी', 'आगरा', 'प्रयागराज', 'मेरठ', 'बरेली', 'नोएडा'] }
+        'guj': { name: 'गुजरात', cities: ['अहमदाबाद', 'सूरत', 'वडोदरा', 'राजकोट', 'भावनगर', 'जामनगर', 'जूनागढ़', 'गांधीनगर'] },
+        'mah': { name: 'महाराष्ट्र', cities: ['मुंबई', 'पुणे', 'नागपुर', 'नाशिक', 'औरंगाबाद', 'कोल्हापुर', 'सोलापुर', 'ठाणे'] },
+        'raj': { name: 'राजस्थान', cities: ['जयपुर', 'जोधपुर', 'कोटा', 'बीकानेर', 'उदयपुर', 'अजमेर', 'भीलवाड़ा', 'अलवर'] },
+        'mp':  { name: 'मध्य प्रदेश', cities: ['इंदौर', 'भोपाल', 'जबलपुर', 'ग्वालियर', 'उज्जैन', 'सागर', 'देवास', 'सतना'] },
+        'up':  { name: 'उत्तर प्रदेश', cities: ['लखनऊ', 'कानपुर', 'वाराणसी', 'आगरा', 'प्रयागराज', 'मेरठ', 'बरेली', 'नोएडा'] }
     },
     'en': {
-        'st_guj': { name: 'Gujarat', cities: ['Ahmedabad', 'Surat', 'Vadodara', 'Rajkot', 'Bhavnagar', 'Jamnagar', 'Junagadh', 'Gandhinagar'] },
-        'st_mah': { name: 'Maharashtra', cities: ['Mumbai', 'Pune', 'Nagpur', 'Nashik', 'Aurangabad', 'Kolhapur', 'Solapur', 'Thane'] },
-        'st_raj': { name: 'Rajasthan', cities: ['Jaipur', 'Jodhpur', 'Kota', 'Bikaner', 'Udaipur', 'Ajmer', 'Bhilwara', 'Alwar'] },
-        'st_mp': { name: 'Madhya Pradesh', cities: ['Indore', 'Bhopal', 'Jabalpur', 'Gwalior', 'Ujjain', 'Sagar', 'Dewas', 'Satna'] },
-        'st_up': { name: 'Uttar Pradesh', cities: ['Lucknow', 'Kanpur', 'Varanasi', 'Agra', 'Prayagraj', 'Meerut', 'Bareilly', 'Noida'] }
+        'guj': { name: 'Gujarat', cities: ['Ahmedabad', 'Surat', 'Vadodara', 'Rajkot', 'Bhavnagar', 'Jamnagar', 'Junagadh', 'Gandhinagar'] },
+        'mah': { name: 'Maharashtra', cities: ['Mumbai', 'Pune', 'Nagpur', 'Nashik', 'Aurangabad', 'Kolhapur', 'Solapur', 'Thane'] },
+        'raj': { name: 'Rajasthan', cities: ['Jaipur', 'Jodhpur', 'Kota', 'Bikaner', 'Udaipur', 'Ajmer', 'Bhilwara', 'Alwar'] },
+        'mp':  { name: 'Madhya Pradesh', cities: ['Indore', 'Bhopal', 'Jabalpur', 'Gwalior', 'Ujjain', 'Sagar', 'Dewas', 'Satna'] },
+        'up':  { name: 'Uttar Pradesh', cities: ['Lucknow', 'Kanpur', 'Varanasi', 'Agra', 'Prayagraj', 'Meerut', 'Bareilly', 'Noida'] }
     }
 };
 
-// Helper to get or update session in Supabase (Serverless Persistence)
-async function getCustomerSession(phone) {
-    if (!supabase) return { step: 'INIT', data: {} };
-    try {
-        const { data, error } = await supabase.from('whatsapp_customers').select('*').eq('phone', phone).single();
-        if (data && data.interest) {
-            try {
-                const parsed = JSON.parse(data.interest);
-                return { step: parsed.step || 'INIT', data: parsed.data || {} };
-            } catch (e) {
-                return { step: 'INIT', data: { language: data.language || 'en' } };
-            }
-        }
-        return { step: 'INIT', data: { language: data?.language || 'en' } };
-    } catch (e) {
-        return { step: 'INIT', data: {} };
-    }
-}
-
-async function saveCustomerSession(phone, step, sessionData) {
-    if (!supabase) return;
-    try {
-        await supabase.from('whatsapp_customers').upsert({
-            phone: phone,
-            name: sessionData.name || null,
-            city: sessionData.city || null,
-            state: sessionData.state || null,
-            language: sessionData.language || 'en',
-            interest: JSON.stringify({ step: step, data: sessionData }),
-            last_message: new Date().toISOString()
-        }, { onConflict: 'phone' });
-    } catch (e) {
-        console.error('saveCustomerSession error:', e.message);
-    }
-}
+const processedMessages = new Set();
+// Global in-memory cache
+global.customerState = global.customerState || {};
 
 app.get('/', (req, res) => {
     res.send('Jay Shree Ambe Food Machinery WhatsApp Agent is active!');
@@ -164,13 +130,11 @@ app.post('/webhook', async (req, res) => {
             }
         }
 
-        // Fetch persisted session from Supabase
-        let session = await getCustomerSession(fromPhone);
         const lower = incomingText.toLowerCase();
 
         // 0. RESET / START
         if (lower === 'hi' || lower === 'hello' || lower === 'start' || lower === 'menu') {
-            await saveCustomerSession(fromPhone, 'LANG', {});
+            global.customerState[fromPhone] = { step: 'LANG' };
             await sendInteractiveButtons(fromPhone, "Welcome to Jay Shree Ambe Food Machinery! 🙏\nPlease select your language / भाषा चुनें / ભાષા પસંદ કરો:", [
                 { id: 'lang_en', title: 'English' },
                 { id: 'lang_hi', title: 'हिंदी' },
@@ -179,20 +143,14 @@ app.post('/webhook', async (req, res) => {
             return res.sendStatus(200);
         }
 
-        // Detect language from interactiveId suffix if present
-        let lang = session.data?.language || 'en';
-        if (interactiveId.endsWith('_hi')) lang = 'hi';
-        else if (interactiveId.endsWith('_gu')) lang = 'gu';
-        else if (interactiveId.endsWith('_en')) lang = 'en';
+        let userState = global.customerState[fromPhone] || { lang: 'en', step: 'INIT' };
 
         // 1. LANGUAGE SELECTED -> Ask Phase
         if (interactiveId.startsWith('lang_')) {
-            if (interactiveId === 'lang_hi') lang = 'hi';
-            else if (interactiveId === 'lang_gu') lang = 'gu';
-            else lang = 'en';
-
-            session.data.language = lang;
-            await saveCustomerSession(fromPhone, 'PHASE', session.data);
+            const lang = interactiveId === 'lang_hi' ? 'hi' : interactiveId === 'lang_gu' ? 'gu' : 'en';
+            userState.lang = lang;
+            userState.step = 'PHASE';
+            global.customerState[fromPhone] = userState;
 
             if (lang === 'hi') {
                 await sendInteractiveButtons(fromPhone, "आपको कौन सा फेज चाहिए?", [
@@ -213,9 +171,11 @@ app.post('/webhook', async (req, res) => {
             return res.sendStatus(200);
         }
 
-        // 2. SINGLE PHASE CHOSEN -> Polite Disclaimer & Redirect
+        // 2. SINGLE PHASE CHOSEN -> Polite Disclaimer
         if (interactiveId.startsWith('ph_single')) {
-            await saveCustomerSession(fromPhone, 'SINGLE_REDIRECT', session.data);
+            const lang = interactiveId.endsWith('_hi') ? 'hi' : interactiveId.endsWith('_gu') ? 'gu' : 'en';
+            userState.lang = lang;
+            global.customerState[fromPhone] = userState;
 
             if (lang === 'hi') {
                 await sendInteractiveButtons(fromPhone, "क्षमा करें, हम सिंगल फेज मशीन नहीं बनाते हैं। हम केवल थ्री-फेज कमर्शियल पल्वराइजर (5 HP से 30 HP) बनाते हैं। क्या आप थ्री-फेज मशीन देखना चाहते हैं?", [
@@ -236,8 +196,8 @@ app.post('/webhook', async (req, res) => {
             return res.sendStatus(200);
         }
 
-        // TALK TO SALES BUTTON
         if (interactiveId.startsWith('talk_sales')) {
+            const lang = interactiveId.endsWith('_hi') ? 'hi' : interactiveId.endsWith('_gu') ? 'gu' : 'en';
             const contactMsg = (lang === 'gu') ?
                 "આપ અમારા સેલ્સ એક્ઝિક્યુટિવ શ્રી અનિલ પંચાલ સાથે સીધો સંપર્ક કરી શકો છો: +91 9925343582." :
                 (lang === 'hi') ?
@@ -247,18 +207,18 @@ app.post('/webhook', async (req, res) => {
             return res.sendStatus(200);
         }
 
-        // 3. THREE PHASE CHOSEN -> Show 4 Real Machine Categories
+        // 3. THREE PHASE CHOSEN -> Show 4 Real Categories
         if (interactiveId.startsWith('ph_three')) {
-            session.data.phase = 'Three Phase';
-            session.data.language = lang;
-            await saveCustomerSession(fromPhone, 'CATEGORY', session.data);
+            const lang = interactiveId.endsWith('_hi') ? 'hi' : interactiveId.endsWith('_gu') ? 'gu' : 'en';
+            userState.lang = lang;
+            userState.phase = 'Three Phase';
+            userState.step = 'CATEGORY';
+            global.customerState[fromPhone] = userState;
 
             const catTitle = (lang === 'gu') ? 'આપને કયું મશીન જોઈએ છે?' :
                              (lang === 'hi') ? 'आपको कौन सी मशीन चाहिए?' :
                              'Which machine are you looking for?';
-            const btnLabel = (lang === 'gu') ? 'મશીન પસંદ કરો' :
-                             (lang === 'hi') ? 'मशीन चुनें' :
-                             'Select Machine';
+            const btnLabel = (lang === 'gu') ? 'મશીન પસંદ કરો' : (lang === 'hi') ? 'मशीन चुनें' : 'Select Machine';
 
             const catOptions = (lang === 'gu') ? [
                 { id: 'cat_atta_gu', title: 'આટા ચક્કી' },
@@ -281,11 +241,13 @@ app.post('/webhook', async (req, res) => {
             return res.sendStatus(200);
         }
 
-        // 4. CATEGORY CHOSEN -> Standard or Cyclone
+        // 4. CATEGORY CHOSEN -> Cyclone or Standard
         if (interactiveId.startsWith('cat_')) {
-            session.data.category = incomingText;
-            session.data.language = lang;
-            await saveCustomerSession(fromPhone, 'TYPE', session.data);
+            const lang = interactiveId.endsWith('_hi') ? 'hi' : interactiveId.endsWith('_gu') ? 'gu' : 'en';
+            userState.lang = lang;
+            userState.category = incomingText;
+            userState.step = 'TYPE';
+            global.customerState[fromPhone] = userState;
 
             const qText = (lang === 'gu') ? 'આપને સાયક્લોન સાથે જોઈએ છે કે સ્ટાન્ડર્ડ?' :
                           (lang === 'hi') ? 'साइक्लोन के साथ चाहिए या साधारण?' :
@@ -299,27 +261,31 @@ app.post('/webhook', async (req, res) => {
             return res.sendStatus(200);
         }
 
-        // 5. TYPE CHOSEN -> HP Capacity (5 to 30 HP)
+        // 5. TYPE CHOSEN -> HP Capacity
         if (interactiveId.startsWith('type_')) {
-            session.data.type = incomingText;
-            session.data.language = lang;
-            await saveCustomerSession(fromPhone, 'HP', session.data);
+            const parts = interactiveId.split('_'); // type, std/cyc/both, lang
+            const typeCode = parts[1] || 'std';
+            const lang = parts[2] || userState.lang || 'en';
+
+            userState.lang = lang;
+            userState.type = incomingText;
+            userState.step = 'HP';
+            global.customerState[fromPhone] = userState;
 
             const hpTitle = (lang === 'gu') ? 'મોટર કેપેસિટી (HP) પસંદ કરો:' :
                             (lang === 'hi') ? 'मोटर क्षमता (HP) चुनें:' :
                             'Select HP Capacity:';
-            const btnLabel = (lang === 'gu') ? 'HP પસંદ કરો' :
-                             (lang === 'hi') ? 'HP चुनें' :
-                             'Select HP';
+            const btnLabel = (lang === 'gu') ? 'HP પસંદ કરો' : (lang === 'hi') ? 'HP चुनें' : 'Select HP';
 
+            // Encode HP, Type, and Language in ID: e.g. hp_25_cyc_hi
             const hpList = [
-                { id: `hp_5_${lang}`, title: '5 HP' },
-                { id: `hp_7_5_${lang}`, title: '7.5 HP' },
-                { id: `hp_10_${lang}`, title: '10 HP' },
-                { id: `hp_15_${lang}`, title: '15 HP' },
-                { id: `hp_20_${lang}`, title: '20 HP' },
-                { id: `hp_25_${lang}`, title: '25 HP' },
-                { id: `hp_30_${lang}`, title: '30 HP' }
+                { id: `hp_5_${typeCode}_${lang}`, title: '5 HP' },
+                { id: `hp_75_${typeCode}_${lang}`, title: '7.5 HP' },
+                { id: `hp_10_${typeCode}_${lang}`, title: '10 HP' },
+                { id: `hp_15_${typeCode}_${lang}`, title: '15 HP' },
+                { id: `hp_20_${typeCode}_${lang}`, title: '20 HP' },
+                { id: `hp_25_${typeCode}_${lang}`, title: '25 HP' },
+                { id: `hp_30_${typeCode}_${lang}`, title: '30 HP' }
             ];
 
             await sendInteractiveList(fromPhone, hpTitle, btnLabel, hpList);
@@ -328,31 +294,108 @@ app.post('/webhook', async (req, res) => {
 
         // 6. HP CHOSEN -> Ask Full Name
         if (interactiveId.startsWith('hp_')) {
-            session.data.hp = incomingText;
-            session.data.language = lang;
-            await saveCustomerSession(fromPhone, 'NAME', session.data);
+            const parts = interactiveId.split('_'); // hp, num, typeCode, lang
+            const hpNum = parts[1] === '75' ? '7.5 HP' : `${parts[1]} HP`;
+            const typeCode = parts[2] || 'std';
+            const lang = parts[3] || userState.lang || 'en';
+
+            const typeName = (typeCode === 'cyc') ? 
+                (lang === 'hi' ? 'साइक्लोन के साथ' : lang === 'gu' ? 'સાયક્લોન સાથે' : 'With Cyclone') :
+                (typeCode === 'both') ?
+                (lang === 'hi' ? 'दोनों विकल्प' : lang === 'gu' ? 'બંને ઓપ્શન' : 'Both Options') :
+                (lang === 'hi' ? 'साधारण' : lang === 'gu' ? 'સ્ટાન્ડર્ડ' : 'Standard');
+
+            userState.lang = lang;
+            userState.hp = hpNum;
+            userState.type = typeName;
+            userState.step = 'NAME';
+            global.customerState[fromPhone] = userState;
 
             const namePrompt = (lang === 'gu') ? 
-                `ખૂબ સરસ! આપનું મશીન: *${session.data.hp}* (${session.data.type}).\n\nકૃપા કરીને આપનું *પૂરું નામ* અહીં લખીને મોકલો:` :
+                `ખૂબ સરસ! આપનું મશીન: *${hpNum}* (${typeName}).\n\nકૃપા કરીને આપનું *પૂરું નામ* અહીં લખીને મોકલો:` :
                 (lang === 'hi') ?
-                `बहुत बढ़िया! आपकी मशीन: *${session.data.hp}* (${session.data.type}).\n\nकृपया अपना *पूरा नाम* यहाँ लिखकर भेजें:` :
-                `Great! Selected: *${session.data.hp}* (${session.data.type}).\n\nPlease type your *Full Name* below:`;
+                `बहुत बढ़िया! आपकी मशीन: *${hpNum}* (${typeName}).\n\nकृपया अपना *पूरा नाम* यहाँ लिखकर भेजें:` :
+                `Great! Selected: *${hpNum}* (${typeName}).\n\nPlease type your *Full Name* below:`;
 
             await sendWhatsAppText(fromPhone, namePrompt);
             return res.sendStatus(200);
         }
 
-        // 7. NAME RECEIVED -> Show State Tap Menu
-        if (session.step === 'NAME' && messageObj.type === 'text') {
-            session.data.name = incomingText;
-            lang = session.data.language || 'en';
-            await saveCustomerSession(fromPhone, 'STATE', session.data);
+        // 7. STATE CHOSEN -> Auto-detect and show Cities
+        if (interactiveId.startsWith('st_')) {
+            const parts = interactiveId.split('_'); // st, stateKey, lang
+            const stKey = parts[1] || 'guj';
+            const lang = parts[2] || userState.lang || 'en';
+
+            userState.lang = lang;
+            userState.state = incomingText;
+            userState.step = 'CITY';
+            global.customerState[fromPhone] = userState;
+
+            const stateData = STATE_CITIES[lang]?.[stKey] || STATE_CITIES['en']?.[stKey];
+
+            if (stateData && stateData.cities) {
+                const cityPrompt = (lang === 'gu') ? 
+                    `આપનું રાજ્ય *${incomingText}* પસંદ થયું છે. આપનું શહેર પસંદ કરો:` :
+                    (lang === 'hi') ?
+                    `आपका राज्य *${incomingText}* चुना गया है। कृपया अपना शहर चुनें:` :
+                    `State: *${incomingText}*. Please tap your City:`;
+                const btnLabel = (lang === 'gu') ? 'શહેર પસંદ કરો' : (lang === 'hi') ? 'शहर चुनें' : 'Select City';
+
+                const cityOptions = stateData.cities.slice(0, 10).map((c, idx) => ({
+                    id: `ct_${idx}_${lang}`,
+                    title: c
+                }));
+
+                await sendInteractiveList(fromPhone, cityPrompt, btnLabel, cityOptions);
+                return res.sendStatus(200);
+            }
+        }
+
+        // 8. CITY CHOSEN VIA TAP -> Finalize
+        if (interactiveId.startsWith('ct_')) {
+            const parts = interactiveId.split('_');
+            const lang = parts[2] || userState.lang || 'en';
+
+            userState.city = incomingText;
+            userState.step = 'COMPLETED';
+
+            await finalizeLead(fromPhone, userState, lang);
+            return res.sendStatus(200);
+        }
+
+        // TEXT HANDLING (Name OR Custom City OR Photo/Video)
+        if (messageObj.type === 'text') {
+            const lang = userState.lang || 'hi';
+
+            // Check if user is asking for photo/video
+            if (lower.includes('photo') || lower.includes('image') || lower.includes('ફોટો') || lower.includes('फोटो')) {
+                await sendWhatsAppText(fromPhone, "Here is our machine photo gallery: https://jayambefoodmachinery.com/media/\n\nYou can browse 5 HP to 30 HP commercial pulverizers with cyclone on our website!");
+                return res.sendStatus(200);
+            }
+            if (lower.includes('video') || lower.includes('youtube') || lower.includes('facebook') || lower.includes('વિડીયો') || lower.includes('वीडियो')) {
+                await sendWhatsAppText(fromPhone, "Watch live grinding demo videos here:\n\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/");
+                return res.sendStatus(200);
+            }
+
+            // If we are at CITY step and user typed city name
+            if (userState.step === 'CITY') {
+                userState.city = incomingText;
+                userState.step = 'COMPLETED';
+                await finalizeLead(fromPhone, userState, lang);
+                return res.sendStatus(200);
+            }
+
+            // Otherwise, user typed their NAME!
+            userState.name = incomingText;
+            userState.step = 'STATE';
+            global.customerState[fromPhone] = userState;
 
             const statePrompt = (lang === 'gu') ? 
-                `આભાર ${session.data.name} જી! કૃપા કરીને આપનું રાજ્ય પસંદ કરો:` :
+                `આભાર ${userState.name} જી! કૃપા કરીને આપનું રાજ્ય પસંદ કરો:` :
                 (lang === 'hi') ?
-                `धन्यवाद ${session.data.name} जी! कृपया अपना राज्य चुनें:` :
-                `Thank you ${session.data.name}! Please tap your State:`;
+                `धन्यवाद ${userState.name} जी! कृपया अपना राज्य चुनें:` :
+                `Thank you ${userState.name}! Please tap your State:`;
             const btnLabel = (lang === 'gu') ? 'રાજ્ય પસંદ કરો' : (lang === 'hi') ? 'राज्य चुनें' : 'Select State';
 
             const stateList = (lang === 'gu') ? [
@@ -379,78 +422,29 @@ app.post('/webhook', async (req, res) => {
             return res.sendStatus(200);
         }
 
-        // 8. STATE CHOSEN -> Auto-detect and show Cities
-        if (interactiveId.startsWith('st_')) {
-            session.data.state = incomingText;
-            session.data.language = lang;
-            await saveCustomerSession(fromPhone, 'CITY', session.data);
-
-            const stKey = interactiveId.substring(0, 6); // e.g. 'st_guj', 'st_raj'
-            const stateData = STATE_CITIES[lang]?.[stKey] || STATE_CITIES['en']?.[stKey];
-
-            if (stateData && stateData.cities) {
-                const cityPrompt = (lang === 'gu') ? 
-                    `આપનું રાજ્ય *${incomingText}* પસંદ થયું છે. આપનું શહેર પસંદ કરો:` :
-                    (lang === 'hi') ?
-                    `आपका राज्य *${incomingText}* चुना गया है। कृपया अपना शहर चुनें:` :
-                    `State: *${incomingText}*. Please tap your City:`;
-                const btnLabel = (lang === 'gu') ? 'શહેર પસંદ કરો' : (lang === 'hi') ? 'शहर चुनें' : 'Select City';
-
-                const cityOptions = stateData.cities.slice(0, 10).map((c, idx) => ({
-                    id: `ct_${idx}_${lang}`,
-                    title: c
-                }));
-
-                await sendInteractiveList(fromPhone, cityPrompt, btnLabel, cityOptions);
-                return res.sendStatus(200);
-            }
-        }
-
-        // 9. CITY CHOSEN -> Finalize & Sync
-        if ((interactiveId.startsWith('ct_') && session.step === 'CITY') || 
-            (session.step === 'CITY' && messageObj.type === 'text')) {
-            
-            session.data.city = incomingText;
-            lang = session.data.language || 'en';
-            await saveCustomerSession(fromPhone, 'COMPLETED', session.data);
-
-            // Sync to CRM and Supabase
-            await syncLeadToOdoo(fromPhone, session.data);
-            await syncLeadToSupabase(fromPhone, session.data);
-
-            const thankMsg = (lang === 'gu') ?
-                `આપની પૂછપરછ સફળતાપૂર્વક નોંધાઈ ગઈ છે! 🙏\n\n👤 *નામ:* ${session.data.name}\n⚙️ *મશીન:* ${session.data.hp} (${session.data.type})\n📍 *સ્થળ:* ${session.data.city}, ${session.data.state}\n\nજય અંબે ફૂડ મશીનરીના સેલ્સ એક્ઝિક્યુટિવ *શ્રી અનિલ પંચાલ (9925343582)* ટૂંક સમયમાં બેસ્ટ કવોટેશન સાથે આપનો સંપર્ક કરશે.\n\nજો આપને આ મશીનનો ફોટો કે વિડીયો જોવો હોય તો અહીં 'ફોટો' અથવા 'વિડીયો' લખીને મોકલી શકો છો.` :
-                (lang === 'hi') ?
-                `आपकी पूछताछ सफलतापूर्वक दर्ज कर ली गई है! 🙏\n\n👤 *नाम:* ${session.data.name}\n⚙️ *मशीन:* ${session.data.hp} (${session.data.type})\n📍 *स्थान:* ${session.data.city}, ${session.data.state}\n\nजय अम्बे फूड मशीनरी के सेल्स एग्जीक्यूटिव *श्री अनिल पांचाल (9925343582)* जल्द ही आपसे सर्वोत्तम कोटेशन के साथ संपर्क करेंगे।\n\nयदि आप मशीन का फोटो या वीडियो देखना चाहते हैं, तो 'फोटो' या 'वीडियो' लिखकर भेज सकते हैं।` :
-                `Thank you for your inquiry! 🙏\n\n👤 *Name:* ${session.data.name}\n⚙️ *Machine:* ${session.data.hp} (${session.data.type})\n📍 *Location:* ${session.data.city}, ${session.data.state}\n\nOur Sales Executive *Mr. Anil Panchal (9925343582)* will contact you shortly with the best quote.\n\nIf you would like to see machine photos or demo videos, please type 'Photo' or 'Video'.`;
-
-            await sendWhatsAppText(fromPhone, thankMsg);
-            return res.sendStatus(200);
-        }
-
-        // PHOTO / VIDEO ON-DEMAND CHECK
-        if (lower.includes('photo') || lower.includes('image') || lower.includes('ફોટો') || lower.includes('फोटो')) {
-            await sendWhatsAppText(fromPhone, "Here is our machine photo gallery: https://jayambefoodmachinery.com/media/\n\nYou can browse 5 HP to 30 HP commercial pulverizers with cyclone on our website!");
-            return res.sendStatus(200);
-        }
-
-        if (lower.includes('video') || lower.includes('youtube') || lower.includes('facebook') || lower.includes('વિડીયો') || lower.includes('वीडियो')) {
-            await sendWhatsAppText(fromPhone, "Watch live grinding demo videos here:\n\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/");
-            return res.sendStatus(200);
-        }
-
-        // FALLBACK TO GEMINI AI
-        const chat = model.startChat({ history: [] });
-        const result = await chat.sendMessage(incomingText);
-        const replyText = result.response.text();
-        await sendWhatsAppText(fromPhone, replyText);
-
         res.sendStatus(200);
     } catch (error) {
         console.error('Webhook error:', error.message);
         res.sendStatus(500);
     }
 });
+
+async function finalizeLead(fromPhone, userState, lang) {
+    try {
+        await syncLeadToOdoo(fromPhone, userState);
+        await syncLeadToSupabase(fromPhone, userState);
+
+        const thankMsg = (lang === 'gu') ?
+            `આપની પૂછપરછ સફળતાપૂર્વક નોંધાઈ ગઈ છે! 🙏\n\n👤 *નામ:* ${userState.name || 'Customer'}\n⚙️ *મશીન:* ${userState.hp || ''} (${userState.type || ''})\n📍 *સ્થળ:* ${userState.city || ''}, ${userState.state || ''}\n\nજય અંબે ફૂડ મશીનરીના સેલ્સ એક્ઝિક્યુટિવ *શ્રી અનિલ પંચાલ (9925343582)* ટૂંક સમયમાં બેસ્ટ કવોટેશન સાથે આપનો સંપર્ક કરશે.\n\nજો આપને આ મશીનનો ફોટો કે વિડીયો જોવો હોય તો અહીં 'ફોટો' અથવા 'વિડીયો' લખીને મોકલી શકો છો.` :
+            (lang === 'hi') ?
+            `आपकी पूछताछ सफलतापूर्वक दर्ज कर ली गई है! 🙏\n\n👤 *नाम:* ${userState.name || 'Customer'}\n⚙️ *मशीन:* ${userState.hp || ''} (${userState.type || ''})\n📍 *स्थान:* ${userState.city || ''}, ${userState.state || ''}\n\nजय अम्बे फूड मशीनरी के सेल्स एग्जीक्यूटिव *श्री अनिल पांचाल (9925343582)* जल्द ही आपसे सर्वोत्तम कोटेशन के साथ संपर्क करेंगे।\n\nयदि आप मशीन का फोटो या वीडियो देखना चाहते हैं, तो 'फोटो' या 'वीडियो' लिखकर भेज सकते हैं।` :
+            `Thank you for your inquiry! 🙏\n\n👤 *Name:* ${userState.name || 'Customer'}\n⚙️ *Machine:* ${userState.hp || ''} (${userState.type || ''})\n📍 *Location:* ${userState.city || ''}, ${userState.state || ''}\n\nOur Sales Executive *Mr. Anil Panchal (9925343582)* will contact you shortly with the best quote.\n\nIf you would like to see machine photos or demo videos, please type 'Photo' or 'Video'.`;
+
+        await sendWhatsAppText(fromPhone, thankMsg);
+    } catch (e) {
+        console.error('finalizeLead error:', e.message);
+    }
+}
 
 // Helper: Send Interactive Buttons (Max 3)
 async function sendInteractiveButtons(toPhone, bodyText, buttons) {
@@ -549,7 +543,7 @@ function syncLeadToOdoo(phone, leadData) {
                     mobile: phone,
                     phone: phone,
                     city: leadData.city || '',
-                    description: `Category: ${leadData.category || ''}\nType: ${leadData.type || ''}\nCapacity: ${leadData.hp || ''}\nState: ${leadData.state || ''}\nLanguage: ${leadData.language || ''}\nSource: WhatsApp AI Interactive Agent`
+                    description: `Category: ${leadData.category || ''}\nType: ${leadData.type || ''}\nCapacity: ${leadData.hp || ''}\nState: ${leadData.state || ''}\nLanguage: ${leadData.lang || ''}\nSource: WhatsApp AI Interactive Agent`
                 };
 
                 models.methodCall('execute_kw', [ODOO_DB, uid, ODOO_PASS, 'crm.lead', 'create', [leadRecord]], (leadErr, leadId) => {
@@ -578,7 +572,7 @@ async function syncLeadToSupabase(phone, leadData) {
             city: leadData.city || null,
             state: leadData.state || null,
             interest: `${leadData.category || ''} - ${leadData.type || ''} - ${leadData.hp || ''}`,
-            language: leadData.language || 'English',
+            language: leadData.lang || 'en',
             last_message: new Date().toISOString()
         }, { onConflict: 'phone' });
         console.log('Successfully synced to Supabase for:', phone);
