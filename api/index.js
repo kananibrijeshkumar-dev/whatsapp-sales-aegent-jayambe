@@ -33,7 +33,7 @@ const VERIFY_TOKEN = process.env.VERIFY_TOKEN || 'jayambebot2024';
 
 // Supabase Setup
 const SUPABASE_URL = "https://uosqmchlfvvevvdmhozi.supabase.co";
-const SUPABASE_KEY = "sb_secret_" + "Jc084cONTCwg2Js" + "-6U00lg_f5nj8T9v";
+const SUPABASE_KEY = process.env.SUPABASE_KEY || "sb_publishable_iaEuQFJp99NoI5Gp00hHag_7MlsHkyK";
 let supabase = null;
 if (SUPABASE_URL && SUPABASE_KEY) {
     supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -658,10 +658,28 @@ async function sendWhatsAppText(toPhone, textMsg) {
     }
 }
 
-// Helper: Push lead to Odoo CRM
+// Sales Team (9 Members for Round-Robin Lead Rotation in ViduCRM)
+const SALES_TEAM = [
+    { id: 6, name: 'Anilbhai' },
+    { id: 9, name: 'Ankitbhai' },
+    { id: 7, name: 'Hemali' },
+    { id: 10, name: 'Lata' },
+    { id: 4211, name: 'Mansi' },
+    { id: 4229, name: 'Mukeshbhai' },
+    { id: 4230, name: 'Priyanshi' },
+    { id: 4203, name: 'Ritu' },
+    { id: 8, name: 'Siya' }
+];
+let salesRotationIndex = 0;
+
+// Helper: Push lead to Odoo CRM with Salesperson Assignment
 function syncLeadToOdoo(phone, leadData) {
     return new Promise((resolve) => {
         try {
+            const assignedRep = SALES_TEAM[salesRotationIndex];
+            salesRotationIndex = (salesRotationIndex + 1) % SALES_TEAM.length;
+            leadData.assignedRep = assignedRep.name;
+
             const common = xmlrpc.createSecureClient({ host: 'v1.viducrm.com', port: 443, path: '/xmlrpc/2/common' });
             common.methodCall('authenticate', [ODOO_DB, ODOO_USER, ODOO_PASS, {}], (err, uid) => {
                 if (err || !uid) {
@@ -675,14 +693,15 @@ function syncLeadToOdoo(phone, leadData) {
                     mobile: phone,
                     phone: phone,
                     city: leadData.city || '',
-                    description: `Category: ${leadData.category || ''}\nType: ${leadData.type || ''}\nCapacity: ${leadData.hp || ''}\nState: ${leadData.state || ''}\nLanguage: ${leadData.lang || ''}\nSource: WhatsApp AI Interactive Agent`
+                    user_id: assignedRep.id,
+                    description: `Assigned Sales Executive: ${assignedRep.name}\nCategory: ${leadData.category || ''}\nType: ${leadData.type || ''}\nCapacity: ${leadData.hp || ''}\nState: ${leadData.state || ''}\nLanguage: ${leadData.lang || ''}\nSource: WhatsApp AI Interactive Agent`
                 };
 
                 models.methodCall('execute_kw', [ODOO_DB, uid, ODOO_PASS, 'crm.lead', 'create', [leadRecord]], (leadErr, leadId) => {
                     if (leadErr) {
                         console.error('Odoo lead creation error:', leadErr);
                     } else {
-                        console.log('Successfully created Odoo lead ID:', leadId);
+                        console.log(`Successfully created Odoo lead ID: ${leadId} assigned to: ${assignedRep.name}`);
                     }
                     resolve(true);
                 });
@@ -694,10 +713,22 @@ function syncLeadToOdoo(phone, leadData) {
     });
 }
 
-// Helper: Push lead to Supabase
+// Helper: Push lead to Supabase (inquiries + whatsapp_customers)
 async function syncLeadToSupabase(phone, leadData) {
     if (!supabase) return;
     try {
+        // 1. Sync to inquiries table
+        const inqRecord = {
+            name: leadData.name || 'Valued Customer',
+            phone: phone,
+            city: leadData.city || '',
+            product: `${leadData.category || ''} | ${leadData.type || ''} | ${leadData.hp || ''}`,
+            source: 'whatsapp_bot'
+        };
+        await supabase.from('inquiries').insert([inqRecord]);
+        console.log('Successfully inserted lead into Supabase inquiries table for:', phone);
+
+        // 2. Sync to whatsapp_customers table
         await supabase.from('whatsapp_customers').upsert({
             phone: phone,
             name: leadData.name || null,
@@ -707,7 +738,7 @@ async function syncLeadToSupabase(phone, leadData) {
             language: leadData.lang || 'en',
             last_message: new Date().toISOString()
         }, { onConflict: 'phone' });
-        console.log('Successfully synced to Supabase for:', phone);
+        console.log('Successfully synced to Supabase whatsapp_customers for:', phone);
     } catch (e) {
         console.error('Supabase sync error:', e.message);
     }
