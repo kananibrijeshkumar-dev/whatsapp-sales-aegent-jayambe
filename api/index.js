@@ -381,15 +381,21 @@ app.post('/webhook', async (req, res) => {
         // TALK TO SALES DIRECT ACTION
         if (interactiveId.startsWith('talk_sales')) {
             const lang = interactiveId.endsWith('_hi') ? 'hi' : interactiveId.endsWith('_gu') ? 'gu' : 'en';
-            const repGu = userState.assignedRepGu || 'શ્રી અનિલભાઈ પંચાલ';
-            const repHi = userState.assignedRepHi || 'श्री अनिल पांचाल';
-            const repEn = userState.assignedRepEn || 'Mr. Anil Panchal';
+            const repGu = userState.assignedRepGu;
+            const repHi = userState.assignedRepHi;
+            const repEn = userState.assignedRepEn;
 
             const contactMsg = (lang === 'gu') ?
-                `આપ અમારા સેલ્સ એક્ઝિક્યુટિવ *${repGu}* અથવા અમારી ઓફિસ હેલ્પલાઇન પર સંપર્ક કરી શકો છો:\n📞 ફોન / WhatsApp: +91 99253 43582\n\nઅમારી ટીમ આપને સંપૂર્ણ સહાય કરશે.` :
+                (repGu ?
+                    `આપ અમારા સેલ્સ એક્ઝિક્યુટિવ *${repGu}* અથવા અમારી ઓફિસ હેલ્પલાઇન પર સંપર્ક કરી શકો છો:\n📞 ફોન / WhatsApp: +91 99253 43582\n\nઅમારી ટીમ આપને સંપૂર્ણ સહાય કરશે.` :
+                    `આપ અમારી સેલ્સ ટીમ અથવા ઓફિસ હેલ્પલાઇન પર સીધો સંપર્ક કરી શકો છો:\n📞 ફોન / WhatsApp: +91 99253 43582\n\nઅમારી ટીમ આપને સંપૂર્ણ સહાય કરશે.`) :
                 (lang === 'hi') ?
-                `आप हमारे सेल्स एग्जीक्यूटिव *${repHi}* अथवा हमारी ऑफिस हेल्पलाइन पर संपर्क कर सकते हैं:\n📞 फोन / WhatsApp: +91 99253 43582\n\nहमारी टीम आपकी पूरी सहायता करेगी।` :
-                `You can reach our Sales Executive *${repEn}* or our office helpline:\n📞 Phone / WhatsApp: +91 99253 43582\n\nOur team will assist you immediately.`;
+                (repHi ?
+                    `आप हमारे सेल्स एग्जीक्यूटिव *${repHi}* अथवा हमारी ऑफिस हेल्पलाइन पर संपर्क कर सकते हैं:\n📞 फोन / WhatsApp: +91 99253 43582\n\nहमारी टीम आपकी पूरी सहायता करेगी।` :
+                    `आप हमारी सेल्स टीम अथवा ऑफिस हेल्पलाइन पर सीधे संपर्क कर सकते हैं:\n📞 फोन / WhatsApp: +91 99253 43582\n\nहमारी टीम आपकी पूरी सहायता करेगी।`) :
+                (repEn ?
+                    `You can reach our Sales Executive *${repEn}* or our office helpline:\n📞 Phone / WhatsApp: +91 99253 43582\n\nOur team will assist you immediately.` :
+                    `You can directly reach our sales team or office helpline:\n📞 Phone / WhatsApp: +91 99253 43582\n\nOur team will assist you immediately.`);
             await sendWhatsAppText(fromPhone, contactMsg);
             return res.sendStatus(200);
         }
@@ -556,9 +562,9 @@ app.post('/webhook', async (req, res) => {
             await syncLeadToSupabase(fromPhone, userState);
 
             // Send Confirmation & Sales Hand-off (Direct Video Links + Interactive Tap Buttons)
-            const repGu = userState.assignedRepGu || 'શ્રી અનિલભાઈ પંચાલ';
-            const repHi = userState.assignedRepHi || 'श्री अनिल पांचाल';
-            const repEn = userState.assignedRepEn || 'Mr. Anil Panchal';
+            const repGu = userState.assignedRepGu || 'અમારા સેલ્સ એક્ઝિક્યુટિવ';
+            const repHi = userState.assignedRepHi || 'हमारे सेल्स एग्जीक्यूटिव';
+            const repEn = userState.assignedRepEn || 'Our Sales Executive';
 
             const thankMsg = (lang === 'gu') ?
                 `✅ *આપની પૂછપરછ સફળતાપૂર્વક નોંધાઈ ગઈ છે!* 🙏\n\n📋 *પૂછપરછ વિગતો:*\n• *ગ્રાહક નામ:* ${userState.name}\n• *મશીન:* ${userState.hp || '20 HP'} (${userState.type || 'કોમર્શિયલ'})\n• *સ્થળ:* ${userState.city}, ${userState.state}\n\nઅમારા સેલ્સ એક્ઝિક્યુટિવ *${repGu}* ટૂંક સમયમાં બેસ્ટ કવોટેશન સાથે આપનો સંપર્ક કરશે.\n📞 *ઓફિસ હેલ્પલાઇન:* +91 99253 43582\n\n🌐 *સત્તાવાર વેબસાઇટ:*\nhttps://jayambefoodmachinery.com\n\n🎥 *લાઈવ મશીન ડેમો વિડીયો:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/` :
@@ -682,47 +688,78 @@ const SALES_TEAM = [
     { id: 4203, name: 'Ritu', gu: 'રીતુબેન', hi: 'रितु जी', en: 'Ms. Ritu' },
     { id: 8, name: 'Siya', gu: 'સિયાબેન', hi: 'सिया जी', en: 'Ms. Siya' }
 ];
-let salesRotationIndex = 0;
-
-// Helper: Push lead to Odoo CRM with Salesperson Assignment
+// Helper: Push lead to Odoo CRM with Salesperson Assignment (True Round-Robin from Odoo History)
 function syncLeadToOdoo(phone, leadData) {
     return new Promise((resolve) => {
         try {
-            const assignedRep = SALES_TEAM[salesRotationIndex];
-            salesRotationIndex = (salesRotationIndex + 1) % SALES_TEAM.length;
-            leadData.assignedRep = assignedRep.name;
-            leadData.assignedRepGu = assignedRep.gu;
-            leadData.assignedRepHi = assignedRep.hi;
-            leadData.assignedRepEn = assignedRep.en;
-
             const common = xmlrpc.createSecureClient({ host: 'v1.viducrm.com', port: 443, path: '/xmlrpc/2/common' });
             common.methodCall('authenticate', [ODOO_DB, ODOO_USER, ODOO_PASS, {}], (err, uid) => {
                 if (err || !uid) {
                     console.error('Odoo auth error:', err);
+                    const fbIdx = Math.floor(Date.now() / 1000) % SALES_TEAM.length;
+                    const assignedRep = SALES_TEAM[fbIdx];
+                    leadData.assignedRep = assignedRep.name;
+                    leadData.assignedRepGu = assignedRep.gu;
+                    leadData.assignedRepHi = assignedRep.hi;
+                    leadData.assignedRepEn = assignedRep.en;
                     return resolve(false);
                 }
-                const models = xmlrpc.createSecureClient({ host: 'v1.viducrm.com', port: 443, path: '/xmlrpc/2/object' });
-                const leadRecord = {
-                    name: `WhatsApp Lead: ${leadData.name || 'Customer'} - ${leadData.hp || '20 HP'} (${leadData.type || 'Commercial'})`,
-                    contact_name: leadData.name || 'Customer',
-                    mobile: phone,
-                    phone: phone,
-                    city: leadData.city || '',
-                    user_id: assignedRep.id,
-                    description: `Assigned Sales Executive: ${assignedRep.name}\nCategory: ${leadData.category || ''}\nType: ${leadData.type || ''}\nCapacity: ${leadData.hp || ''}\nState: ${leadData.state || ''}\nLanguage: ${leadData.lang || ''}\nSource: WhatsApp AI Interactive Agent`
-                };
 
-                models.methodCall('execute_kw', [ODOO_DB, uid, ODOO_PASS, 'crm.lead', 'create', [leadRecord]], (leadErr, leadId) => {
-                    if (leadErr) {
-                        console.error('Odoo lead creation error:', leadErr);
+                const models = xmlrpc.createSecureClient({ host: 'v1.viducrm.com', port: 443, path: '/xmlrpc/2/object' });
+
+                // Step 1: Query the last lead from Odoo CRM to determine the next salesperson in round-robin sequence
+                models.methodCall('execute_kw', [ODOO_DB, uid, ODOO_PASS, 'crm.lead', 'search_read', [[]], {
+                    fields: ['id', 'user_id'],
+                    limit: 1,
+                    order: 'id desc'
+                }], (searchErr, lastLeads) => {
+                    let nextIndex = 0;
+                    if (!searchErr && Array.isArray(lastLeads) && lastLeads.length > 0 && lastLeads[0].user_id) {
+                        const lastUserId = Array.isArray(lastLeads[0].user_id) ? lastLeads[0].user_id[0] : lastLeads[0].user_id;
+                        const lastIndex = SALES_TEAM.findIndex(m => m.id === lastUserId);
+                        if (lastIndex !== -1) {
+                            nextIndex = (lastIndex + 1) % SALES_TEAM.length;
+                        } else {
+                            nextIndex = Math.floor(Date.now() / 1000) % SALES_TEAM.length;
+                        }
                     } else {
-                        console.log(`Successfully created Odoo lead ID: ${leadId} assigned to: ${assignedRep.name}`);
+                        nextIndex = Math.floor(Date.now() / 1000) % SALES_TEAM.length;
                     }
-                    resolve(true);
+
+                    const assignedRep = SALES_TEAM[nextIndex];
+                    leadData.assignedRep = assignedRep.name;
+                    leadData.assignedRepGu = assignedRep.gu;
+                    leadData.assignedRepHi = assignedRep.hi;
+                    leadData.assignedRepEn = assignedRep.en;
+
+                    const leadRecord = {
+                        name: `WhatsApp Lead: ${leadData.name || 'Customer'} - ${leadData.hp || '20 HP'} (${leadData.type || 'Commercial'})`,
+                        contact_name: leadData.name || 'Customer',
+                        mobile: phone,
+                        phone: phone,
+                        city: leadData.city || '',
+                        user_id: assignedRep.id,
+                        description: `Assigned Sales Executive: ${assignedRep.name}\nCategory: ${leadData.category || ''}\nType: ${leadData.type || ''}\nCapacity: ${leadData.hp || ''}\nState: ${leadData.state || ''}\nLanguage: ${leadData.lang || ''}\nSource: WhatsApp AI Interactive Agent`
+                    };
+
+                    models.methodCall('execute_kw', [ODOO_DB, uid, ODOO_PASS, 'crm.lead', 'create', [leadRecord]], (leadErr, leadId) => {
+                        if (leadErr) {
+                            console.error('Odoo lead creation error:', leadErr);
+                        } else {
+                            console.log(`Successfully created Odoo lead ID: ${leadId} rotated to: ${assignedRep.name} (Index ${nextIndex}/${SALES_TEAM.length})`);
+                        }
+                        resolve(true);
+                    });
                 });
             });
         } catch (e) {
             console.error('Odoo sync error:', e);
+            const fbIdx = Math.floor(Date.now() / 1000) % SALES_TEAM.length;
+            const assignedRep = SALES_TEAM[fbIdx];
+            leadData.assignedRep = assignedRep.name;
+            leadData.assignedRepGu = assignedRep.gu;
+            leadData.assignedRepHi = assignedRep.hi;
+            leadData.assignedRepEn = assignedRep.en;
             resolve(false);
         }
     });
