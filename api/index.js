@@ -773,14 +773,14 @@ function syncLeadToOdoo(phone, leadData) {
 async function syncLeadToSupabase(phone, leadData) {
     if (!supabase) return;
     try {
-        // 1. Sync to inquiries table (stores full product & city)
+        // 1. Sync to inquiries table (stores full product, city, and assigned salesperson)
         try {
             const inqRecord = {
                 name: leadData.name || 'Valued Customer',
                 phone: phone,
                 city: leadData.city || '',
                 product: `${leadData.category || ''} | ${leadData.type || ''} | ${leadData.hp || ''}`,
-                source: 'whatsapp_bot'
+                source: `whatsapp_bot - ${leadData.assignedRep || 'Sales Team'}`
             };
             await supabase.from('inquiries').insert([inqRecord]);
             console.log('Successfully inserted lead into Supabase inquiries table for:', phone);
@@ -790,15 +790,15 @@ async function syncLeadToSupabase(phone, leadData) {
 
         // 2. Sync to whatsapp_customers table (phone, name, state, last_message)
         try {
-            await supabase.from('whatsapp_customers').upsert({
+            await supabase.from('whatsapp_customers').insert([{
                 phone: phone,
                 name: leadData.name || null,
                 state: leadData.state || null,
                 last_message: new Date().toISOString()
-            }, { onConflict: 'phone' });
+            }]);
             console.log('Successfully synced to Supabase whatsapp_customers for:', phone);
         } catch (custErr) {
-            console.error('whatsapp_customers upsert error:', custErr.message);
+            console.error('whatsapp_customers insert error:', custErr.message);
         }
     } catch (e) {
         console.error('Supabase sync general error:', e.message);
