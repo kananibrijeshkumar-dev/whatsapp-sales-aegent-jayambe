@@ -454,8 +454,14 @@ app.post('/webhook', async (req, res) => {
         // 4. CATEGORY CHOSEN -> Cyclone Attachment Option
         if (interactiveId.startsWith('cat_')) {
             const lang = interactiveId.endsWith('_hi') ? 'hi' : interactiveId.endsWith('_gu') ? 'gu' : 'en';
+            const catCode = interactiveId.split('_')[1];
+            const catNameEn = (catCode === 'atta') ? 'Atta Chakki / Flour Mill' :
+                              (catCode === 'masala') ? 'Masala Grinding' :
+                              (catCode === 'haldi') ? 'Haldi Grinding' :
+                              (catCode === 'chilly') ? 'Chilly Grinding' : incomingText;
             userState.lang = lang;
             userState.category = incomingText;
+            userState.categoryEn = catNameEn;
             userState.step = 'TYPE';
             global.customerState[fromPhone] = userState;
 
@@ -743,7 +749,7 @@ function syncLeadToOdoo(phone, leadData) {
                         phone: phone,
                         city: leadData.city || '',
                         user_id: assignedRep.id,
-                        description: `Assigned Sales Executive: ${assignedRep.name}\nCategory: ${leadData.category || ''}\nType: ${leadData.type || ''}\nCapacity: ${leadData.hp || ''}\nState: ${leadData.state || ''}\nLanguage: ${leadData.lang || ''}\nSource: WhatsApp AI Interactive Agent`
+                        description: `Assigned Sales Executive: ${assignedRep.name}\nCategory: ${leadData.categoryEn || leadData.category || ''}\nType: ${leadData.typeEn || leadData.type || ''}\nCapacity: ${leadData.hp || ''}\nState: ${leadData.state || ''}\nLanguage: ${leadData.lang || ''}\nSource: WhatsApp AI Interactive Agent`
                     };
 
                     models.methodCall('execute_kw', [ODOO_DB, uid, ODOO_PASS, 'crm.lead', 'create', [leadRecord]], (leadErr, leadId) => {
