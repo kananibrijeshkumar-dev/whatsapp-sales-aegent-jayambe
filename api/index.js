@@ -717,30 +717,35 @@ function syncLeadToOdoo(phone, leadData) {
 async function syncLeadToSupabase(phone, leadData) {
     if (!supabase) return;
     try {
-        // 1. Sync to inquiries table
-        const inqRecord = {
-            name: leadData.name || 'Valued Customer',
-            phone: phone,
-            city: leadData.city || '',
-            product: `${leadData.category || ''} | ${leadData.type || ''} | ${leadData.hp || ''}`,
-            source: 'whatsapp_bot'
-        };
-        await supabase.from('inquiries').insert([inqRecord]);
-        console.log('Successfully inserted lead into Supabase inquiries table for:', phone);
+        // 1. Sync to inquiries table (stores full product & city)
+        try {
+            const inqRecord = {
+                name: leadData.name || 'Valued Customer',
+                phone: phone,
+                city: leadData.city || '',
+                product: `${leadData.category || ''} | ${leadData.type || ''} | ${leadData.hp || ''}`,
+                source: 'whatsapp_bot'
+            };
+            await supabase.from('inquiries').insert([inqRecord]);
+            console.log('Successfully inserted lead into Supabase inquiries table for:', phone);
+        } catch (inqErr) {
+            console.error('Inquiries insert error:', inqErr.message);
+        }
 
-        // 2. Sync to whatsapp_customers table
-        await supabase.from('whatsapp_customers').upsert({
-            phone: phone,
-            name: leadData.name || null,
-            city: leadData.city || null,
-            state: leadData.state || null,
-            interest: `${leadData.category || ''} - ${leadData.type || ''} - ${leadData.hp || ''}`,
-            language: leadData.lang || 'en',
-            last_message: new Date().toISOString()
-        }, { onConflict: 'phone' });
-        console.log('Successfully synced to Supabase whatsapp_customers for:', phone);
+        // 2. Sync to whatsapp_customers table (phone, name, state, last_message)
+        try {
+            await supabase.from('whatsapp_customers').upsert({
+                phone: phone,
+                name: leadData.name || null,
+                state: leadData.state || null,
+                last_message: new Date().toISOString()
+            }, { onConflict: 'phone' });
+            console.log('Successfully synced to Supabase whatsapp_customers for:', phone);
+        } catch (custErr) {
+            console.error('whatsapp_customers upsert error:', custErr.message);
+        }
     } catch (e) {
-        console.error('Supabase sync error:', e.message);
+        console.error('Supabase sync general error:', e.message);
     }
 }
 
