@@ -674,13 +674,13 @@ async function sendWhatsAppText(toPhone, textMsg) {
 const SALES_TEAM = [
     { id: 6, name: 'Anilbhai', gu: 'શ્રી અનિલભાઈ પંચાલ', hi: 'श्री अनिल पांचाल', en: 'Mr. Anil Panchal' },
     { id: 9, name: 'Ankitbhai', gu: 'શ્રી અંકિતભાઈ', hi: 'श्री अंकितभाई', en: 'Mr. Ankitbhai' },
-    { id: 7, name: 'Hemali', gu: 'હેમાલીબેન', hi: 'हेमाली', en: 'Ms. Hemali' },
-    { id: 10, name: 'Lata', gu: 'લતાબેન', hi: 'लता', en: 'Ms. Lata' },
-    { id: 4211, name: 'Mansi', gu: 'માનસીબેન', hi: 'मानसी', en: 'Ms. Mansi' },
+    { id: 7, name: 'Hemali', gu: 'હેમાલીબેન', hi: 'हेमाली जी', en: 'Ms. Hemali' },
+    { id: 10, name: 'Lata', gu: 'લતાબેન', hi: 'लता जी', en: 'Ms. Lata' },
+    { id: 4211, name: 'Mansi', gu: 'માનસીબેન', hi: 'मानसी जी', en: 'Ms. Mansi' },
     { id: 4229, name: 'Mukeshbhai', gu: 'શ્રી મુકેશભાઈ', hi: 'श्री मुकेशभाई', en: 'Mr. Mukeshbhai' },
-    { id: 4230, name: 'Priyanshi', gu: 'પ્રિયાંશીબેન', hi: 'प्रियांशी', en: 'Ms. Priyanshi' },
-    { id: 4203, name: 'Ritu', gu: 'રીતુબેન', hi: 'रितु', en: 'Ms. Ritu' },
-    { id: 8, name: 'Siya', gu: 'સિયાબેન', hi: 'सिया', en: 'Ms. Siya' }
+    { id: 4230, name: 'Priyanshi', gu: 'પ્રિયાંશીબેન', hi: 'प्रियांशी जी', en: 'Ms. Priyanshi' },
+    { id: 4203, name: 'Ritu', gu: 'રીતુબેન', hi: 'रितु जी', en: 'Ms. Ritu' },
+    { id: 8, name: 'Siya', gu: 'સિયાબેન', hi: 'सिया जी', en: 'Ms. Siya' }
 ];
 let salesRotationIndex = 0;
 
