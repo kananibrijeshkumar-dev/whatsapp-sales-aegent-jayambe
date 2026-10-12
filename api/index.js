@@ -381,11 +381,15 @@ app.post('/webhook', async (req, res) => {
         // TALK TO SALES DIRECT ACTION
         if (interactiveId.startsWith('talk_sales')) {
             const lang = interactiveId.endsWith('_hi') ? 'hi' : interactiveId.endsWith('_gu') ? 'gu' : 'en';
+            const repGu = userState.assignedRepGu || 'શ્રી અનિલભાઈ પંચાલ';
+            const repHi = userState.assignedRepHi || 'श्री अनिल पांचाल';
+            const repEn = userState.assignedRepEn || 'Mr. Anil Panchal';
+
             const contactMsg = (lang === 'gu') ?
-                "આપ અમારા સિનિયર સેલ્સ એક્ઝિક્યુટિવ શ્રી અનિલભાઈ પંચાલ સાથે સીધો સંપર્ક કરી શકો છો:\n📞 ફોન: +91 99253 43582\n\nઅમારી ટીમ આપને સંપૂર્ણ સહાય કરશે." :
+                `આપ અમારા સેલ્સ એક્ઝિક્યુટિવ *${repGu}* અથવા અમારી ઓફિસ હેલ્પલાઇન પર સંપર્ક કરી શકો છો:\n📞 ફોન / WhatsApp: +91 99253 43582\n\nઅમારી ટીમ આપને સંપૂર્ણ સહાય કરશે.` :
                 (lang === 'hi') ?
-                "आप हमारे सीनियर सेल्स एग्जीक्यूटिव श्री अनिल पांचाल से सीधे संपर्क कर सकते हैं:\n📞 फोन: +91 99253 43582\n\nहमारी टीम आपकी पूरी सहायता करेगी।" :
-                "You can directly contact our Senior Sales Executive Mr. Anil Panchal:\n📞 Phone: +91 99253 43582\n\nOur team will assist you immediately.";
+                `आप हमारे सेल्स एग्जीक्यूटिव *${repHi}* अथवा हमारी ऑफिस हेल्पलाइन पर संपर्क कर सकते हैं:\n📞 फोन / WhatsApp: +91 99253 43582\n\nहमारी टीम आपकी पूरी सहायता करेगी।` :
+                `You can reach our Sales Executive *${repEn}* or our office helpline:\n📞 Phone / WhatsApp: +91 99253 43582\n\nOur team will assist you immediately.`;
             await sendWhatsAppText(fromPhone, contactMsg);
             return res.sendStatus(200);
         }
@@ -393,11 +397,15 @@ app.post('/webhook', async (req, res) => {
         // WATCH VIDEOS DIRECT ACTION (When customer taps [🎥 વિડીયો જુઓ] button)
         if (interactiveId.startsWith('btn_video')) {
             const lang = interactiveId.endsWith('_hi') ? 'hi' : interactiveId.endsWith('_gu') ? 'gu' : 'en';
+            const repGu = userState.assignedRepGu || 'શ્રી અનિલભાઈ પંચાલ';
+            const repHi = userState.assignedRepHi || 'श्री अनिल पांचाल';
+            const repEn = userState.assignedRepEn || 'Mr. Anil Panchal';
+
             const mediaMsg = (lang === 'gu') ?
-                `🎥 *જય શ્રી અંબે ફૂડ મશીનરી - લાઈવ ડેમો વિડીયો:*\n\nઅમારા થ્રી-ફેઝ કોમર્શિયલ પલ્વરાઇઝર મશીનોના લાઈવ ગ્રાઇન્ડીંગ ડેમો નીચે આપેલ સત્તાવાર લિંક્સ પર જુઓ:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nકોઈપણ માહિતી અથવા કવોટેશન માટે સીધો સંપર્ક કરો:\n📞 *શ્રી અનિલભાઈ પંચાલ (+91 99253 43582)*` :
+                `🎥 *જય શ્રી અંબે ફૂડ મશીનરી - લાઈવ ડેમો વિડીયો:*\n\nઅમારા થ્રી-ફેઝ કોમર્શિયલ પલ્વરાઇઝર મશીનોના લાઈવ ગ્રાઇન્ડીંગ ડેમો નીચે આપેલ સત્તાવાર લિંક્સ પર જુઓ:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nકોઈપણ માહિતી અથવા કવોટેશન માટે સંપર્ક કરો:\n📞 *ઓફિસ હેલ્પલાઇન: +91 99253 43582*` :
                 (lang === 'hi') ?
-                `🎥 *जय श्री अम्बे फूड मशीनरी - लाइव डेमो वीडियो:*\n\nहमारी थ्री-फेज कमर्शियल पल्वराइजर मशीनों के लाइव ग्राइंडिंग डेमो नीचे दिए गए आधिकारिक लिंक्स पर देखें:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nकिसी भी जानकारी या कोटेशन के लिए संपर्क करें:\n📞 *श्री अनिल पांचाल (+91 99253 43582)*` :
-                `🎥 *Jay Shree Ambe Food Machinery - Live Demo Videos:*\n\nWatch our three-phase commercial pulverizers in continuous live operation on our official channels:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nFor pricing and technical support:\n📞 *Mr. Anil Panchal (+91 99253 43582)*`;
+                `🎥 *जय श्री अम्बे फूड मशीनरी - लाइव डेमो वीडियो:*\n\nहमारी थ्री-फेज कमर्शियल पल्वराइजर मशीनों के लाइव ग्राइंडिंग डेमो नीचे दिए गए आधिकारिक लिंक्स पर देखें:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nकिसी भी जानकारी या कोटेशन के लिए संपर्क करें:\n📞 *ऑफिस हेल्पलाइन: +91 99253 43582*` :
+                `🎥 *Jay Shree Ambe Food Machinery - Live Demo Videos:*\n\nWatch our three-phase commercial pulverizers in continuous live operation on our official channels:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nFor pricing and technical assistance:\n📞 *Office Helpline: +91 99253 43582*`;
 
             await sendWhatsAppText(fromPhone, mediaMsg);
             return res.sendStatus(200);
@@ -526,10 +534,10 @@ app.post('/webhook', async (req, res) => {
                 lower.includes('photo') || lower.includes('image') || userState.step === 'COMPLETED') {
 
                 const mediaMsg = (lang === 'gu') ?
-                    `🎥 *લાઈવ મશીન ડેમો વિડીયો અને ફોટા:*\n\nઅમારા પલ્વરાઇઝર મશીનોના લાઈવ ગ્રાઇન્ડીંગ ડેમો નીચે આપેલ સત્તાવાર લિંક્સ પર જુઓ:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nકોઈપણ તાત્કાલિક માહિતી માટે સીધો સંપર્ક કરો:\n📞 *શ્રી અનિલ પંચાલ (+91 9925343582)*` :
+                    `🎥 *લાઈવ મશીન ડેમો વિડીયો અને ફોટા:*\n\nઅમારા પલ્વરાઇઝર મશીનોના લાઈવ ગ્રાઇન્ડીંગ ડેમો નીચે આપેલ સત્તાવાર લિંક્સ પર જુઓ:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nકોઈપણ તાત્કાલિક માહિતી માટે સંપર્ક કરો:\n📞 *ઓફિસ હેલ્પલાઇન: +91 99253 43582*` :
                     (lang === 'hi') ?
-                    `🎥 *लाइव मशीन डेमो वीडियो और फोटो:*\n\nहमारी पल्वराइजर मशीनों के लाइव ग्राइंडिंग डेमो नीचे दिए गए आधिकारिक लिंक्स पर देखें:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nकिसी भी त्वरित जानकारी के लिए संपर्क करें:\n📞 *श्री अनिल पांचाल (+91 9925343582)*` :
-                    `🎥 *Live Machine Demo Videos & Photos:*\n\nWatch our commercial pulverizers in live continuous operation on our official channels:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nFor any immediate assistance:\n📞 *Mr. Anil Panchal (+91 9925343582)*`;
+                    `🎥 *लाइव मशीन डेमो वीडियो और फोटो:*\n\nहमारी पल्वराइजर मशीनों के लाइव ग्राइंडिंग डेमो नीचे दिए गए आधिकारिक लिंक्स पर देखें:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nकिसी भी त्वरित जानकारी के लिए संपर्क करें:\n📞 *ऑफिस हेल्पलाइन: +91 99253 43582*` :
+                    `🎥 *Live Machine Demo Videos & Photos:*\n\nWatch our commercial pulverizers in live continuous operation on our official channels:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nFor any immediate assistance:\n📞 *Office Helpline: +91 99253 43582*`;
 
                 await sendWhatsAppText(fromPhone, mediaMsg);
                 return res.sendStatus(200);
@@ -548,11 +556,15 @@ app.post('/webhook', async (req, res) => {
             await syncLeadToSupabase(fromPhone, userState);
 
             // Send Confirmation & Sales Hand-off (Direct Video Links + Interactive Tap Buttons)
+            const repGu = userState.assignedRepGu || 'શ્રી અનિલભાઈ પંચાલ';
+            const repHi = userState.assignedRepHi || 'श्री अनिल पांचाल';
+            const repEn = userState.assignedRepEn || 'Mr. Anil Panchal';
+
             const thankMsg = (lang === 'gu') ?
-                `✅ *આપની પૂછપરછ સફળતાપૂર્વક નોંધાઈ ગઈ છે!* 🙏\n\n📋 *પૂછપરછ વિગતો:*\n• *ગ્રાહક નામ:* ${userState.name}\n• *મશીન:* ${userState.hp || '20 HP'} (${userState.type || 'કોમર્શિયલ'})\n• *સ્થળ:* ${userState.city}, ${userState.state}\n\nઅમારા સિનિયર સેલ્સ એક્ઝિક્યુટિવ *શ્રી અનિલભાઈ પંચાલ (+91 99253 43582)* ટૂંક સમયમાં બેસ્ટ કવોટેશન સાથે આપનો સંપર્ક કરશે.\n\n🌐 *સત્તાવાર વેબસાઇટ:*\nhttps://jayambefoodmachinery.com\n\n🎥 *લાઈવ મશીન ડેમો વિડીયો:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/` :
+                `✅ *આપની પૂછપરછ સફળતાપૂર્વક નોંધાઈ ગઈ છે!* 🙏\n\n📋 *પૂછપરછ વિગતો:*\n• *ગ્રાહક નામ:* ${userState.name}\n• *મશીન:* ${userState.hp || '20 HP'} (${userState.type || 'કોમર્શિયલ'})\n• *સ્થળ:* ${userState.city}, ${userState.state}\n\nઅમારા સેલ્સ એક્ઝિક્યુટિવ *${repGu}* ટૂંક સમયમાં બેસ્ટ કવોટેશન સાથે આપનો સંપર્ક કરશે.\n📞 *ઓફિસ હેલ્પલાઇન:* +91 99253 43582\n\n🌐 *સત્તાવાર વેબસાઇટ:*\nhttps://jayambefoodmachinery.com\n\n🎥 *લાઈવ મશીન ડેમો વિડીયો:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/` :
                 (lang === 'hi') ?
-                `✅ *आपकी पूछताछ सफलतापूर्वक दर्ज कर ली गई है!* 🙏\n\n📋 *पूछताछ विवरण:*\n• *ग्राहक नाम:* ${userState.name}\n• *मशीन:* ${userState.hp || '20 HP'} (${userState.type || 'कमर्शियल'})\n• *स्थान:* ${userState.city}, ${userState.state}\n\nहमारे सीनियर सेल्स एग्जीक्यूटिव *श्री अनिल पांचाल (+91 99253 43582)* जल्द ही सर्वोत्तम कोटेशन के साथ आपसे संपर्क करेंगे।\n\n🌐 *आधिकारिक वेबसाइट:*\nhttps://jayambefoodmachinery.com\n\n🎥 *लाइव मशीन डेमो वीडियो:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/` :
-                `✅ *Your inquiry has been successfully registered!* 🙏\n\n📋 *Inquiry Summary:*\n• *Customer Name:* ${userState.name}\n• *Machine:* ${userState.hp || '20 HP'} (${userState.type || 'Commercial'})\n• *Location:* ${userState.city}, ${userState.state}\n\nOur Senior Sales Executive *Mr. Anil Panchal (+91 99253 43582)* will contact you shortly with the best pricing.\n\n🌐 *Official Website:*\nhttps://jayambefoodmachinery.com\n\n🎥 *Live Machine Demo Videos:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/`;
+                `✅ *आपकी पूछताछ सफलतापूर्वक दर्ज कर ली गई है!* 🙏\n\n📋 *पूछताछ विवरण:*\n• *ग्राहक नाम:* ${userState.name}\n• *मशीन:* ${userState.hp || '20 HP'} (${userState.type || 'कमर्शियल'})\n• *स्थान:* ${userState.city}, ${userState.state}\n\nहमारे सेल्स एग्जीक्यूटिव *${repHi}* जल्द ही सर्वोत्तम कोटेशन के साथ आपसे संपर्क करेंगे।\n📞 *ऑफिस हेल्पलाइन:* +91 99253 43582\n\n🌐 *आधिकारिक वेबसाइट:*\nhttps://jayambefoodmachinery.com\n\n🎥 *लाइव मशीन डेमो वीडियो:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/` :
+                `✅ *Your inquiry has been successfully registered!* 🙏\n\n📋 *Inquiry Summary:*\n• *Customer Name:* ${userState.name}\n• *Machine:* ${userState.hp || '20 HP'} (${userState.type || 'Commercial'})\n• *Location:* ${userState.city}, ${userState.state}\n\nOur Sales Executive *${repEn}* will contact you shortly with the best pricing.\n📞 *Office Helpline:* +91 99253 43582\n\n🌐 *Official Website:*\nhttps://jayambefoodmachinery.com\n\n🎥 *Live Machine Demo Videos:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/`;
 
             const finalButtons = (lang === 'gu') ? [
                 { id: 'btn_video_gu', title: '🎥 વિડીયો જુઓ' },
@@ -660,15 +672,15 @@ async function sendWhatsAppText(toPhone, textMsg) {
 
 // Sales Team (9 Members for Round-Robin Lead Rotation in ViduCRM)
 const SALES_TEAM = [
-    { id: 6, name: 'Anilbhai' },
-    { id: 9, name: 'Ankitbhai' },
-    { id: 7, name: 'Hemali' },
-    { id: 10, name: 'Lata' },
-    { id: 4211, name: 'Mansi' },
-    { id: 4229, name: 'Mukeshbhai' },
-    { id: 4230, name: 'Priyanshi' },
-    { id: 4203, name: 'Ritu' },
-    { id: 8, name: 'Siya' }
+    { id: 6, name: 'Anilbhai', gu: 'શ્રી અનિલભાઈ પંચાલ', hi: 'श्री अनिल पांचाल', en: 'Mr. Anil Panchal' },
+    { id: 9, name: 'Ankitbhai', gu: 'શ્રી અંકિતભાઈ', hi: 'श्री अंकितभाई', en: 'Mr. Ankitbhai' },
+    { id: 7, name: 'Hemali', gu: 'હેમાલીબેન', hi: 'हेमाली', en: 'Ms. Hemali' },
+    { id: 10, name: 'Lata', gu: 'લતાબેન', hi: 'लता', en: 'Ms. Lata' },
+    { id: 4211, name: 'Mansi', gu: 'માનસીબેન', hi: 'मानसी', en: 'Ms. Mansi' },
+    { id: 4229, name: 'Mukeshbhai', gu: 'શ્રી મુકેશભાઈ', hi: 'श्री मुकेशभाई', en: 'Mr. Mukeshbhai' },
+    { id: 4230, name: 'Priyanshi', gu: 'પ્રિયાંશીબેન', hi: 'प्रियांशी', en: 'Ms. Priyanshi' },
+    { id: 4203, name: 'Ritu', gu: 'રીતુબેન', hi: 'रितु', en: 'Ms. Ritu' },
+    { id: 8, name: 'Siya', gu: 'સિયાબેન', hi: 'सिया', en: 'Ms. Siya' }
 ];
 let salesRotationIndex = 0;
 
@@ -679,6 +691,9 @@ function syncLeadToOdoo(phone, leadData) {
             const assignedRep = SALES_TEAM[salesRotationIndex];
             salesRotationIndex = (salesRotationIndex + 1) % SALES_TEAM.length;
             leadData.assignedRep = assignedRep.name;
+            leadData.assignedRepGu = assignedRep.gu;
+            leadData.assignedRepHi = assignedRep.hi;
+            leadData.assignedRepEn = assignedRep.en;
 
             const common = xmlrpc.createSecureClient({ host: 'v1.viducrm.com', port: 443, path: '/xmlrpc/2/common' });
             common.methodCall('authenticate', [ODOO_DB, ODOO_USER, ODOO_PASS, {}], (err, uid) => {
