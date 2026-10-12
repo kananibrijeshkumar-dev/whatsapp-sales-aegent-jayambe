@@ -49,32 +49,32 @@ const ODOO_PASS = '824e7ef8e28156d5b0137ae5ede2d09129e2f371';
 const CITY_STATE_MAP = {
     // Gujarat
     'ahmedabad': { city: 'Ahmedabad', state: 'Gujarat' },
-    'અમદાવાદ': { city: 'અમદાવાદ', state: 'ગુજરાત' },
-    'अहमदाबाद': { city: 'अहमदाबाद', state: 'गुजरात' },
+    'અમદાવાદ': { city: 'Ahmedabad', state: 'Gujarat' },
+    'अहमदाबाद': { city: 'Ahmedabad', state: 'Gujarat' },
     'surat': { city: 'Surat', state: 'Gujarat' },
-    'સુરત': { city: 'સુરત', state: 'ગુજરાત' },
-    'सूरत': { city: 'सूरत', state: 'गुजरात' },
+    'સુરત': { city: 'Surat', state: 'Gujarat' },
+    'सूरत': { city: 'Surat', state: 'Gujarat' },
     'vadodara': { city: 'Vadodara', state: 'Gujarat' },
-    'વડોદરા': { city: 'વડોદરા', state: 'ગુજરાત' },
+    'વડોદરા': { city: 'Vadodara', state: 'Gujarat' },
     'rajkot': { city: 'Rajkot', state: 'Gujarat' },
-    'રાજકોટ': { city: 'રાજકોટ', state: 'ગુજરાત' },
+    'રાજકોટ': { city: 'Rajkot', state: 'Gujarat' },
     'bhavnagar': { city: 'Bhavnagar', state: 'Gujarat' },
-    'ભાવનગર': { city: 'ભાવનગર', state: 'ગુજરાત' },
+    'ભાવનગર': { city: 'Bhavnagar', state: 'Gujarat' },
     'jamnagar': { city: 'Jamnagar', state: 'Gujarat' },
-    'જામનગર': { city: 'જામનગર', state: 'ગુજરાત' },
+    'જામનગર': { city: 'Jamnagar', state: 'Gujarat' },
     'junagadh': { city: 'Junagadh', state: 'Gujarat' },
-    'જૂનાગઢ': { city: 'જૂનાગઢ', state: 'ગુજરાત' },
+    'જૂનાગઢ': { city: 'Junagadh', state: 'Gujarat' },
     'gandhinagar': { city: 'Gandhinagar', state: 'Gujarat' },
-    'ગાંધીનગર': { city: 'ગાંધીનગર', state: 'ગુજરાત' },
+    'ગાંધીનગર': { city: 'Gandhinagar', state: 'Gujarat' },
     'anand': { city: 'Anand', state: 'Gujarat' },
     'morbi': { city: 'Morbi', state: 'Gujarat' },
-    'મોરબી': { city: 'મોરબી', state: 'ગુજરાત' },
+    'મોરબી': { city: 'Morbi', state: 'Gujarat' },
     'mehsana': { city: 'Mehsana', state: 'Gujarat' },
-    'મહેસાણા': { city: 'મહેસાણા', state: 'ગુજરાત' },
+    'મહેસાણા': { city: 'Mehsana', state: 'Gujarat' },
     'bharuch': { city: 'Bharuch', state: 'Gujarat' },
-    'ભરૂચ': { city: 'ભરૂચ', state: 'ગુજરાત' },
+    'ભરૂચ': { city: 'Bharuch', state: 'Gujarat' },
     'vapi': { city: 'Vapi', state: 'Gujarat' },
-    'વાપી': { city: 'વાપી', state: 'ગુજરાત' },
+    'વાપી': { city: 'Vapi', state: 'Gujarat' },
     'valsad': { city: 'Valsad', state: 'Gujarat' },
     'navsari': { city: 'Navsari', state: 'Gujarat' },
     'chhota udepur': { city: 'Chhota Udepur', state: 'Gujarat' },
@@ -92,14 +92,14 @@ const CITY_STATE_MAP = {
 
     // Maharashtra
     'mumbai': { city: 'Mumbai', state: 'Maharashtra' },
-    'મુંબઈ': { city: 'મુંબઈ', state: 'મહારાષ્ટ્ર' },
-    'मुंबई': { city: 'मुंबई', state: 'महाराष्ट्र' },
+    'મુંબઈ': { city: 'Mumbai', state: 'Maharashtra' },
+    'मुंबई': { city: 'Mumbai', state: 'Maharashtra' },
     'pune': { city: 'Pune', state: 'Maharashtra' },
-    'પુણે': { city: 'પુણે', state: 'મહારાષ્ટ્ર' },
-    'पुणे': { city: 'पुणे', state: 'महाराष्ट्र' },
+    'પુણે': { city: 'Pune', state: 'Maharashtra' },
+    'पुणे': { city: 'Pune', state: 'Maharashtra' },
     'nagpur': { city: 'Nagpur', state: 'Maharashtra' },
-    'નાગપુર': { city: 'નાગપુર', state: 'મહારાષ્ટ્ર' },
-    'नागपुर': { city: 'नागपुर', state: 'महाराष्ट्र' },
+    'નાગપુર': { city: 'Nagpur', state: 'Maharashtra' },
+    'नागपुर': { city: 'Nagpur', state: 'Maharashtra' },
     'nashik': { city: 'Nashik', state: 'Maharashtra' },
     'aurangabad': { city: 'Aurangabad', state: 'Maharashtra' },
     'sambhajinagar': { city: 'Chhatrapati Sambhajinagar', state: 'Maharashtra' },
@@ -118,11 +118,11 @@ const CITY_STATE_MAP = {
 
     // Rajasthan
     'jaipur': { city: 'Jaipur', state: 'Rajasthan' },
-    'જયપુર': { city: 'જયપુર', state: 'રાજસ્થાન' },
-    'जयपुर': { city: 'जयपुर', state: 'राजस्थान' },
+    'જયપુર': { city: 'Jaipur', state: 'Rajasthan' },
+    'जयपुर': { city: 'Jaipur', state: 'Rajasthan' },
     'jodhpur': { city: 'Jodhpur', state: 'Rajasthan' },
-    'જોધપુર': { city: 'જોધપુર', state: 'રાજસ્થાન' },
-    'जोधपुर': { city: 'जोधपुर', state: 'राजस्थान' },
+    'જોધપુર': { city: 'Jodhpur', state: 'Rajasthan' },
+    'जोधपुर': { city: 'Jodhpur', state: 'Rajasthan' },
     'kota': { city: 'Kota', state: 'Rajasthan' },
     'bikaner': { city: 'Bikaner', state: 'Rajasthan' },
     'udaipur': { city: 'Udaipur', state: 'Rajasthan' },
@@ -131,8 +131,8 @@ const CITY_STATE_MAP = {
     'alwar': { city: 'Alwar', state: 'Rajasthan' },
     'sikar': { city: 'Sikar', state: 'Rajasthan' },
     'barmer': { city: 'Barmer', state: 'Rajasthan' },
-    'બાડમેર': { city: 'બાડમેર', state: 'રાજસ્થાન' },
-    'बाड़मेर': { city: 'बाड़मेर', state: 'राजस्थान' },
+    'બાડમેર': { city: 'Barmer', state: 'Rajasthan' },
+    'बाड़मेर': { city: 'Barmer', state: 'Rajasthan' },
     'badmer': { city: 'Barmer', state: 'Rajasthan' },
     'chittorgarh': { city: 'Chittorgarh', state: 'Rajasthan' },
     'pali': { city: 'Pali', state: 'Rajasthan' },
@@ -141,11 +141,11 @@ const CITY_STATE_MAP = {
 
     // Madhya Pradesh
     'indore': { city: 'Indore', state: 'Madhya Pradesh' },
-    'ઇન્દોર': { city: 'ઇન્દોર', state: 'મધ્ય પ્રદેશ' },
-    'इंदौर': { city: 'इंदौर', state: 'मध्य प्रदेश' },
+    'ઇન્દોર': { city: 'Indore', state: 'Madhya Pradesh' },
+    'इंदौर': { city: 'Indore', state: 'Madhya Pradesh' },
     'bhopal': { city: 'Bhopal', state: 'Madhya Pradesh' },
-    'ભોપાલ': { city: 'ભોપાલ', state: 'મધ્ય પ્રદેશ' },
-    'भोपाल': { city: 'भोपाल', state: 'मध्य प्रदेश' },
+    'ભોપાલ': { city: 'Bhopal', state: 'Madhya Pradesh' },
+    'भोपाल': { city: 'Bhopal', state: 'Madhya Pradesh' },
     'jabalpur': { city: 'Jabalpur', state: 'Madhya Pradesh' },
     'gwalior': { city: 'Gwalior', state: 'Madhya Pradesh' },
     'ujjain': { city: 'Ujjain', state: 'Madhya Pradesh' },
@@ -160,13 +160,13 @@ const CITY_STATE_MAP = {
 
     // Uttar Pradesh
     'lucknow': { city: 'Lucknow', state: 'Uttar Pradesh' },
-    'લખનૌ': { city: 'લખનૌ', state: 'ઉત્તર પ્રદેશ' },
-    'लखनऊ': { city: 'लखनऊ', state: 'उत्तर प्रदेश' },
+    'લખનૌ': { city: 'Lucknow', state: 'Uttar Pradesh' },
+    'लखनऊ': { city: 'Lucknow', state: 'Uttar Pradesh' },
     'kanpur': { city: 'Kanpur', state: 'Uttar Pradesh' },
-    'કાનપુર': { city: 'કાનપુર', state: 'ઉત્તર પ્રદેશ' },
-    'कानपुर': { city: 'कानपुर', state: 'उत्तर प्रदेश' },
+    'કાનપુર': { city: 'Kanpur', state: 'Uttar Pradesh' },
+    'कानपुर': { city: 'Kanpur', state: 'Uttar Pradesh' },
     'varanasi': { city: 'Varanasi', state: 'Uttar Pradesh' },
-    'बनारस': { city: 'वाराणसी', state: 'उत्तर प्रदेश' },
+    'बनारस': { city: 'Varanasi', state: 'Uttar Pradesh' },
     'agra': { city: 'Agra', state: 'Uttar Pradesh' },
     'prayagraj': { city: 'Prayagraj', state: 'Uttar Pradesh' },
     'allahabad': { city: 'Prayagraj', state: 'Uttar Pradesh' },
@@ -514,9 +514,13 @@ app.post('/webhook', async (req, res) => {
                 (lang === 'hi' ? 'दोनों विकल्प' : lang === 'gu' ? 'બંને વિકલ્પો' : 'Both Options') :
                 (lang === 'hi' ? 'साधारण' : lang === 'gu' ? 'સ્ટાન્ડર્ડ' : 'Standard');
 
+            const typeNameEn = (typeCode === 'cyc') ? 'With Cyclone' :
+                               (typeCode === 'both') ? 'Both Options' : 'Standard';
+
             userState.lang = lang;
             userState.hp = hpNum;
             userState.type = typeName;
+            userState.typeEn = typeNameEn;
             userState.step = 'AWAITING_DETAILS';
             global.customerState[fromPhone] = userState;
 
@@ -733,7 +737,7 @@ function syncLeadToOdoo(phone, leadData) {
                     leadData.assignedRepEn = assignedRep.en;
 
                     const leadRecord = {
-                        name: `WhatsApp Lead: ${leadData.name || 'Customer'} - ${leadData.hp || '20 HP'} (${leadData.type || 'Commercial'})`,
+                        name: `WhatsApp Lead: ${leadData.name || 'Customer'} - ${leadData.hp || '20 HP'} (${leadData.typeEn || leadData.type || 'Commercial'})`,
                         contact_name: leadData.name || 'Customer',
                         mobile: phone,
                         phone: phone,
