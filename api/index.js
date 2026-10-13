@@ -204,14 +204,34 @@ const CITY_STATE_MAP = {
     'bhubaneswar': { city: 'Bhubaneswar', state: 'Odisha' }
 };
 
+// Helper: Check if incoming text is a greeting or start command
+function isGreeting(text) {
+    if (!text || typeof text !== 'string') return false;
+    const clean = text.toLowerCase().trim().replace(/[!.,?🙏\s]+/g, ' ');
+    const greetingWords = [
+        'hi', 'hello', 'hey', 'hii', 'hiii', 'helo', 'hellow',
+        'good morning', 'good afternoon', 'good evening', 'good night',
+        'gm', 'ga', 'ge', 'gn',
+        'namaste', 'namaskar', 'kem cho', 'kemcho', 'khemcho',
+        'jay shree krishna', 'jai shree krishna', 'jsk',
+        'jay ambe', 'jai ambe', 'jay mataji', 'jai mataji',
+        'radhe radhe', 'ram ram', 'sitaram', 'shree ram',
+        'start', 'restart', 'menu', 'help', 'info'
+    ];
+    if (greetingWords.includes(clean.trim())) return true;
+    for (const g of greetingWords) {
+        if (clean.startsWith(g + ' ') || clean.endsWith(' ' + g)) return true;
+    }
+    return false;
+}
+
 // Helper: Auto-detect City and State from Customer Text Input
 function parseNameAndLocation(inputStr, defaultLang = 'en') {
-    const clean = inputStr.replace(/[\n\r,]+/g, ' ').trim();
+    const clean = inputStr.replace(/[\r\n,]+/g, ' ').trim();
     const words = clean.split(/\s+/);
 
     let detectedCity = null;
     let detectedState = null;
-    let remainingWords = [];
 
     // Check 2-word cities first (e.g., 'Chhota Udepur', 'New Delhi')
     for (let i = 0; i < words.length - 1; i++) {
@@ -239,13 +259,13 @@ function parseNameAndLocation(inputStr, defaultLang = 'en') {
 
     const detectedName = words.join(' ').trim() || 'Valued Customer';
 
-    // If city wasn't in our database, fallback to last word as city
+    // If city wasn't in our database, fallback to comma / newline / hyphen split
     if (!detectedCity) {
-        const parts = inputStr.split(/[,\\n-]+/);
+        const parts = inputStr.split(/[\r\n,/-]+/);
         if (parts.length >= 2) {
             return {
-                name: parts[0].trim(),
-                city: parts[1].trim(),
+                name: parts[0].trim() || 'Valued Customer',
+                city: parts[1].trim() || 'India',
                 state: parts[2] ? parts[2].trim() : 'India'
             };
         }
@@ -316,8 +336,8 @@ app.post('/webhook', async (req, res) => {
         const lower = incomingText.toLowerCase();
         let userState = global.customerState[fromPhone] || { lang: 'en', step: 'INIT' };
 
-        // 0. RESET / START (Strictly on explicit greetings)
-        if (lower === 'hi' || lower === 'hello' || lower === 'start' || lower === 'restart' || lower === 'menu') {
+        // 0. RESET / START (On explicit greetings or start keywords)
+        if (isGreeting(incomingText)) {
             global.customerState[fromPhone] = { step: 'LANG' };
             await sendInteractiveButtons(fromPhone, "Welcome to Jay Shree Ambe Food Machinery! 🙏\nDirect Manufacturer of Commercial Pulverizers.\n\nPlease select your preferred language:\nકૃપા કરીને આપની ભાષા પસંદ કરો:\nकृपया अपनी भाषा चुनें:", [
                 { id: 'lang_en', title: 'English' },
@@ -540,14 +560,14 @@ app.post('/webhook', async (req, res) => {
             return res.sendStatus(200);
         }
 
-        // 7. TEXT HANDLING (Customer types Name & City -> Auto-Detect State & Finalize)
+        // 7. TEXT HANDLING (Step-aware to prevent premature lead submission)
         if (messageObj.type === 'text') {
             const lang = userState.lang || 'en';
 
-            // If customer asks for Video AFTER data collection
+            // If customer asks for Video / Demo
             if (lower.includes('video') || lower.includes('વિડીયો') || lower.includes('वीडियो') ||
                 lower.includes('youtube') || lower.includes('facebook') || lower.includes('demo') ||
-                lower.includes('photo') || lower.includes('image') || userState.step === 'COMPLETED') {
+                lower.includes('photo') || lower.includes('image')) {
 
                 const mediaMsg = (lang === 'gu') ?
                     `🎥 *લાઈવ મશીન ડેમો વિડીયો અને ફોટા:*\n\nઅમારા પલ્વરાઇઝર મશીનોના લાઈવ ગ્રાઇન્ડીંગ ડેમો નીચે આપેલ સત્તાવાર લિંક્સ પર જુઓ:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nકોઈપણ તાત્કાલિક માહિતી માટે સંપર્ક કરો:\n📞 *ઓફિસ હેલ્પલાઇન: +91 99253 43582*` :
@@ -559,41 +579,74 @@ app.post('/webhook', async (req, res) => {
                 return res.sendStatus(200);
             }
 
-            // Customer entered Name & City details!
-            const parsed = parseNameAndLocation(incomingText, lang);
-            userState.name = parsed.name;
-            userState.city = parsed.city;
-            userState.state = parsed.state;
-            userState.step = 'COMPLETED';
-            global.customerState[fromPhone] = userState;
+            // Case A: Customer already COMPLETED inquiry and sends extra message
+            if (userState.step === 'COMPLETED') {
+                const completedReply = (lang === 'gu') ?
+                    `🙏 આપની પૂછપરછ સફળતાપૂર્વક નોંધાઈ ગઈ છે. અમારા સેલ્સ એક્ઝિક્યુટિવ ટૂંક સમયમાં આપનો સંપર્ક કરશે.\n\nનવી પૂછપરછ શરૂ કરવા માટે *Hi* લખીને મોકલો.` :
+                    (lang === 'hi') ?
+                    `🙏 आपकी पूछताछ सफलतापूर्वक दर्ज हो चुकी है। हमारे सेल्स एग्जीक्यूटिव जल्द ही आपसे संपर्क करेंगे।\n\nनई पूछताछ शुरू करने के लिए *Hi* लिखकर भेजें।` :
+                    `🙏 Your inquiry has already been registered. Our sales executive will contact you shortly.\n\nTo start a new inquiry, type *Hi*.`;
+                await sendWhatsAppText(fromPhone, completedReply);
+                return res.sendStatus(200);
+            }
 
-            // Sync to Odoo CRM and Supabase
-            await syncLeadToOdoo(fromPhone, userState);
-            await syncLeadToSupabase(fromPhone, userState);
+            // Case B: ONLY when customer is actually asked to submit their Name & City!
+            if (userState.step === 'AWAITING_DETAILS') {
+                const parsed = parseNameAndLocation(incomingText, lang);
+                userState.name = parsed.name;
+                userState.city = parsed.city;
+                userState.state = parsed.state;
+                userState.step = 'COMPLETED';
+                global.customerState[fromPhone] = userState;
 
-            // Send Confirmation & Sales Hand-off (Direct Video Links + Interactive Tap Buttons)
-            const repGu = userState.assignedRepGu || 'અમારા સેલ્સ એક્ઝિક્યુટિવ';
-            const repHi = userState.assignedRepHi || 'हमारे सेल्स एग्जीक्यूटिव';
-            const repEn = userState.assignedRepEn || 'Our Sales Executive';
+                // Sync to Odoo CRM and Supabase
+                await syncLeadToOdoo(fromPhone, userState);
+                await syncLeadToSupabase(fromPhone, userState);
 
-            const thankMsg = (lang === 'gu') ?
-                `✅ *આપની પૂછપરછ સફળતાપૂર્વક નોંધાઈ ગઈ છે!* 🙏\n\n📋 *પૂછપરછ વિગતો:*\n• *ગ્રાહક નામ:* ${userState.name}\n• *મશીન:* ${userState.hp || '20 HP'} (${userState.type || 'કોમર્શિયલ'})\n• *સ્થળ:* ${userState.city}, ${userState.state}\n\nઅમારા સેલ્સ એક્ઝિક્યુટિવ *${repGu}* ટૂંક સમયમાં બેસ્ટ કવોટેશન સાથે આપનો સંપર્ક કરશે.\n📞 *ઓફિસ હેલ્પલાઇન:* +91 99253 43582\n\n🌐 *સત્તાવાર વેબસાઇટ:*\nhttps://jayambefoodmachinery.com\n\n🎥 *લાઈવ મશીન ડેમો વિડીયો:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/` :
+                // Send Confirmation & Sales Hand-off (Direct Video Links + Interactive Tap Buttons)
+                const repGu = userState.assignedRepGu || 'અમારા સેલ્સ એક્ઝિક્યુટિવ';
+                const repHi = userState.assignedRepHi || 'हमारे सेल्स एग्जीक्यूटिव';
+                const repEn = userState.assignedRepEn || 'Our Sales Executive';
+
+                const thankMsg = (lang === 'gu') ?
+                    `✅ *આપની પૂછપરછ સફળતાપૂર્વક નોંધાઈ ગઈ છે!* 🙏\n\n📋 *પૂછપરછ વિગતો:*\n• *ગ્રાહક નામ:* ${userState.name}\n• *મશીન:* ${userState.hp || '20 HP'} (${userState.type || 'કોમર્શિયલ'})\n• *સ્થળ:* ${userState.city}, ${userState.state}\n\nઅમારા સેલ્સ એક્ઝિક્યુટિવ *${repGu}* ટૂંક સમયમાં બેસ્ટ કવોટેશન સાથે આપનો સંપર્ક કરશે.\n📞 *ઓફિસ હેલ્પલાઇન:* +91 99253 43582\n\n🌐 *સત્તાવાર વેબસાઇટ:*\nhttps://jayambefoodmachinery.com\n\n🎥 *લાઈવ મશીન ડેમો વિડીયો:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/` :
+                    (lang === 'hi') ?
+                    `✅ *आपकी पूछताछ सफलतापूर्वक दर्ज कर ली गई है!* 🙏\n\n📋 *पूछताछ विवरण:*\n• *ग्राहक नाम:* ${userState.name}\n• *मशीन:* ${userState.hp || '20 HP'} (${userState.type || 'कमर्शियल'})\n• *स्थान:* ${userState.city}, ${userState.state}\n\nहमारे सेल्स एग्जीक्यूटिव *${repHi}* जल्द ही सर्वोत्तम कोटेशन के साथ आपसे संपर्क करेंगे।\n📞 *ऑफिस हेल्पलाइन:* +91 99253 43582\n\n🌐 *आधिकारिक वेबसाइट:*\nhttps://jayambefoodmachinery.com\n\n🎥 *लाइव मशीन डेमो वीडियो:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/` :
+                    `✅ *Your inquiry has been successfully registered!* 🙏\n\n📋 *Inquiry Summary:*\n• *Customer Name:* ${userState.name}\n• *Machine:* ${userState.hp || '20 HP'} (${userState.type || 'Commercial'})\n• *Location:* ${userState.city}, ${userState.state}\n\nOur Sales Executive *${repEn}* will contact you shortly with the best pricing.\n📞 *Office Helpline:* +91 99253 43582\n\n🌐 *Official Website:*\nhttps://jayambefoodmachinery.com\n\n🎥 *Live Machine Demo Videos:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/`;
+
+                const finalButtons = (lang === 'gu') ? [
+                    { id: 'btn_video_gu', title: '🎥 વિડીયો જુઓ' },
+                    { id: 'talk_sales_gu', title: '📞 સંપર્ક કરો' }
+                ] : (lang === 'hi') ? [
+                    { id: 'btn_video_hi', title: '🎥 वीडियो देखें' },
+                    { id: 'talk_sales_hi', title: '📞 संपर्क करें' }
+                ] : [
+                    { id: 'btn_video_en', title: '🎥 Watch Videos' },
+                    { id: 'talk_sales_en', title: '📞 Contact Sales' }
+                ];
+
+                await sendInteractiveButtons(fromPhone, thankMsg, finalButtons);
+                return res.sendStatus(200);
+            }
+
+            // Case C: Customer sent text before choosing a language (LANG / INIT step)
+            if (!userState.step || userState.step === 'INIT' || userState.step === 'LANG') {
+                global.customerState[fromPhone] = { step: 'LANG' };
+                await sendInteractiveButtons(fromPhone, "Welcome to Jay Shree Ambe Food Machinery! 🙏\nDirect Manufacturer of Commercial Pulverizers.\n\nPlease select your preferred language:\nકૃપા કરીને આપની ભાષા પસંદ કરો:\nकृपया अपनी भाषा चुनें:", [
+                    { id: 'lang_en', title: 'English' },
+                    { id: 'lang_hi', title: 'हिंदी' },
+                    { id: 'lang_gu', title: 'ગુજરાતી' }
+                ]);
+                return res.sendStatus(200);
+            }
+
+            // Case D: Customer sent text while in the middle of Phase/Category/Type/HP selection
+            const promptGuide = (lang === 'gu') ?
+                `કૃપા કરીને આગળ વધવા માટે ઉપર આપેલા વિકલ્પોમાંથી પસંદ કરો, અથવા શરૂઆતથી શરૂ કરવા માટે *Hi* લખો. 🙏` :
                 (lang === 'hi') ?
-                `✅ *आपकी पूछताछ सफलतापूर्वक दर्ज कर ली गई है!* 🙏\n\n📋 *पूछताछ विवरण:*\n• *ग्राहक नाम:* ${userState.name}\n• *मशीन:* ${userState.hp || '20 HP'} (${userState.type || 'कमर्शियल'})\n• *स्थान:* ${userState.city}, ${userState.state}\n\nहमारे सेल्स एग्जीक्यूटिव *${repHi}* जल्द ही सर्वोत्तम कोटेशन के साथ आपसे संपर्क करेंगे।\n📞 *ऑफिस हेल्पलाइन:* +91 99253 43582\n\n🌐 *आधिकारिक वेबसाइट:*\nhttps://jayambefoodmachinery.com\n\n🎥 *लाइव मशीन डेमो वीडियो:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/` :
-                `✅ *Your inquiry has been successfully registered!* 🙏\n\n📋 *Inquiry Summary:*\n• *Customer Name:* ${userState.name}\n• *Machine:* ${userState.hp || '20 HP'} (${userState.type || 'Commercial'})\n• *Location:* ${userState.city}, ${userState.state}\n\nOur Sales Executive *${repEn}* will contact you shortly with the best pricing.\n📞 *Office Helpline:* +91 99253 43582\n\n🌐 *Official Website:*\nhttps://jayambefoodmachinery.com\n\n🎥 *Live Machine Demo Videos:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/`;
-
-            const finalButtons = (lang === 'gu') ? [
-                { id: 'btn_video_gu', title: '🎥 વિડીયો જુઓ' },
-                { id: 'talk_sales_gu', title: '📞 સંપર્ક કરો' }
-            ] : (lang === 'hi') ? [
-                { id: 'btn_video_hi', title: '🎥 वीडियो देखें' },
-                { id: 'talk_sales_hi', title: '📞 संपर्क करें' }
-            ] : [
-                { id: 'btn_video_en', title: '🎥 Watch Videos' },
-                { id: 'talk_sales_en', title: '📞 Contact Sales' }
-            ];
-
-            await sendInteractiveButtons(fromPhone, thankMsg, finalButtons);
+                `कृपया आगे बढ़ने के लिए ऊपर दिए गए विकल्पों में से चयन करें, या दोबारा शुरू करने के लिए *Hi* लिखें। 🙏` :
+                `Please select one of the options above to proceed, or type *Hi* to restart. 🙏`;
+            await sendWhatsAppText(fromPhone, promptGuide);
             return res.sendStatus(200);
         }
 
