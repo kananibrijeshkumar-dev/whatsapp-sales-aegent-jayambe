@@ -45,6 +45,24 @@ const ODOO_DB = 'vicrm_prd_17';
 const ODOO_USER = 'jaf010@jayambe.net';
 const ODOO_PASS = '824e7ef8e28156d5b0137ae5ede2d09129e2f371';
 
+// Gemini AI Setup (Intelligent Conversational Brain for Customer Inquiries)
+const GEMINI_API_KEY = (process.env.GEMINI_API_KEY || '').replace(/"/g, '').trim();
+let genAI = null;
+let geminiModel = null;
+if (GEMINI_API_KEY) {
+    try {
+        genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+        geminiModel = genAI.getGenerativeModel({
+            model: "gemini-1.5-flash",
+            systemInstruction: systemPrompt,
+            generationConfig: { temperature: 0.2 }
+        });
+        console.log('Gemini AI brain successfully initialized.');
+    } catch (err) {
+        console.error('Gemini init error:', err.message);
+    }
+}
+
 // Comprehensive City-to-State Mapping for Automatic Detection
 const CITY_STATE_MAP = {
     // Gujarat
@@ -342,12 +360,13 @@ async function sendLeadConfirmation(fromPhone, userState, lang) {
     const repGu = userState.assignedRepGu || 'અમારા સેલ્સ એક્ઝિક્યુટિવ';
     const repHi = userState.assignedRepHi || 'हमारे सेल्स एग्जीक्यूटिव';
     const repEn = userState.assignedRepEn || 'Our Sales Executive';
+    const repPhone = userState.assignedRepPhone || '+91 99253 43582';
 
     const thankMsg = (lang === 'gu') ?
-        `✅ *આપની પૂછપરછ સફળતાપૂર્વક નોંધાઈ ગઈ છે!* 🙏\n\n📋 *પૂછપરછ વિગતો:*\n• *ગ્રાહક નામ:* ${userState.name}\n• *મશીન:* ${userState.hp || '20 HP'} (${userState.type || 'કોમર્શિયલ'})\n• *સ્થળ:* ${userState.city}, ${userState.state}\n\nઅમારા સેલ્સ એક્ઝિક્યુટિવ *${repGu}* ટૂંક સમયમાં બેસ્ટ કવોટેશન સાથે આપનો સંપર્ક કરશે.\n📞 *ઓફિસ હેલ્પલાઇન:* +91 99253 43582\n\n🌐 *સત્તાવાર વેબસાઇટ:*\nhttps://jayambefoodmachinery.com\n\n🎥 *લાઈવ મશીન ડેમો વિડીયો:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/` :
+        `✅ *આપની પૂછપરછ સફળતાપૂર્વક નોંધાઈ ગઈ છે!* 🙏\n\n📋 *પૂછપરછ વિગતો:*\n• *ગ્રાહક નામ:* ${userState.name}\n• *મશીન:* ${userState.hp || '20 HP'} (${userState.type || 'કોમર્શિયલ'})\n• *સ્થળ:* ${userState.city}, ${userState.state}\n\nઅમારા સેલ્સ એક્ઝિક્યુટિવ *${repGu}* ટૂંક સમયમાં બેસ્ટ કવોટેશન સાથે આપનો સંપર્ક કરશે.\n📞 *સીધો સંપર્ક:* ${repPhone}\n\n🌐 *સત્તાવાર વેબસાઇટ:*\nhttps://jayambefoodmachinery.com\n\n🎥 *લાઈવ મશીન ડેમો વિડીયો:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/` :
         (lang === 'hi') ?
-        `✅ *आपकी पूछताछ सफलतापूर्वक दर्ज कर ली गई है!* 🙏\n\n📋 *पूछताछ विवरण:*\n• *ग्राहक नाम:* ${userState.name}\n• *मशीन:* ${userState.hp || '20 HP'} (${userState.type || 'कमर्शियल'})\n• *स्थान:* ${userState.city}, ${userState.state}\n\nहमारे सेल्स एग्जीक्यूटिव *${repHi}* जल्द ही सर्वोत्तम कोटेशन के साथ आपसे संपर्क करेंगे।\n📞 *ऑफिस हेल्पलाइन:* +91 99253 43582\n\n🌐 *आधिकारिक वेबसाइट:*\nhttps://jayambefoodmachinery.com\n\n🎥 *लाइव मशीन डेमो वीडियो:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/` :
-        `✅ *Your inquiry has been successfully registered!* 🙏\n\n📋 *Inquiry Summary:*\n• *Customer Name:* ${userState.name}\n• *Machine:* ${userState.hp || '20 HP'} (${userState.type || 'Commercial'})\n• *Location:* ${userState.city}, ${userState.state}\n\nOur Sales Executive *${repEn}* will contact you shortly with the best pricing.\n📞 *Office Helpline:* +91 99253 43582\n\n🌐 *Official Website:*\nhttps://jayambefoodmachinery.com\n\n🎥 *Live Machine Demo Videos:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/`;
+        `✅ *आपकी पूछताछ सफलतापूर्वक दर्ज कर ली गई है!* 🙏\n\n📋 *पूछताछ विवरण:*\n• *ग्राहक नाम:* ${userState.name}\n• *मशीन:* ${userState.hp || '20 HP'} (${userState.type || 'कमर्शियल'})\n• *स्थान:* ${userState.city}, ${userState.state}\n\nहमारे सेल्स एग्जीक्यूटिव *${repHi}* जल्द ही सर्वोत्तम कोटेशन के साथ आपसे संपर्क करेंगे।\n📞 *सीधा संपर्क:* ${repPhone}\n\n🌐 *आधिकारिक वेबसाइट:*\nhttps://jayambefoodmachinery.com\n\n🎥 *लाइव मशीन डेमो वीडियो:*\\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/` :
+        `✅ *Your inquiry has been successfully registered!* 🙏\n\n📋 *Inquiry Summary:*\n• *Customer Name:* ${userState.name}\n• *Machine:* ${userState.hp || '20 HP'} (${userState.type || 'Commercial'})\n• *Location:* ${userState.city}, ${userState.state}\n\nOur Sales Executive *${repEn}* will contact you shortly with the best pricing.\n📞 *Direct Contact:* ${repPhone}\n\n🌐 *Official Website:*\nhttps://jayambefoodmachinery.com\n\n🎥 *Live Machine Demo Videos:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/`;
 
     const finalButtons = (lang === 'gu') ? [
         { id: 'btn_video_gu', title: '🎥 વિડીયો જુઓ' },
@@ -427,9 +446,9 @@ app.post('/webhook', async (req, res) => {
             return res.sendStatus(200);
         }
 
-        // 1. LANGUAGE SELECTED -> Ask Phase
-        if (interactiveId.startsWith('lang_')) {
-            const lang = interactiveId === 'lang_hi' ? 'hi' : interactiveId === 'lang_gu' ? 'gu' : 'en';
+        // 1. LANGUAGE SELECTED OR VIEW MACHINES TAPPED -> Ask Phase
+        if (interactiveId.startsWith('lang_') || interactiveId.startsWith('btn_restart')) {
+            const lang = interactiveId.endsWith('_hi') ? 'hi' : interactiveId.endsWith('_gu') ? 'gu' : 'en';
             userState.lang = lang;
             userState.step = 'PHASE';
             await saveCustomerState(fromPhone, userState);
@@ -481,21 +500,26 @@ app.post('/webhook', async (req, res) => {
         // TALK TO SALES DIRECT ACTION
         if (interactiveId.startsWith('talk_sales')) {
             const lang = interactiveId.endsWith('_hi') ? 'hi' : interactiveId.endsWith('_gu') ? 'gu' : 'en';
-            const repGu = userState.assignedRepGu;
-            const repHi = userState.assignedRepHi;
-            const repEn = userState.assignedRepEn;
+            if (!userState.assignedRep) {
+                const fbIdx = Math.floor(Date.now() / 1000) % SALES_TEAM.length;
+                const assigned = SALES_TEAM[fbIdx];
+                userState.assignedRep = assigned.name;
+                userState.assignedRepGu = assigned.gu;
+                userState.assignedRepHi = assigned.hi;
+                userState.assignedRepEn = assigned.en;
+                userState.assignedRepPhone = assigned.phone;
+                await saveCustomerState(fromPhone, userState);
+            }
+            const repGu = userState.assignedRepGu || 'અમારા સેલ્સ એક્ઝિક્યુટિવ';
+            const repHi = userState.assignedRepHi || 'हमारे सेल्स एग्जीक्यूटिव';
+            const repEn = userState.assignedRepEn || 'Our Sales Executive';
+            const repPhone = userState.assignedRepPhone || '+91 99253 43582';
 
             const contactMsg = (lang === 'gu') ?
-                (repGu ?
-                    `આપ અમારા સેલ્સ એક્ઝિક્યુટિવ *${repGu}* અથવા અમારી ઓફિસ હેલ્પલાઇન પર સંપર્ક કરી શકો છો:\n📞 ફોન / WhatsApp: +91 99253 43582\n\nઅમારી ટીમ આપને સંપૂર્ણ સહાય કરશે.` :
-                    `આપ અમારી સેલ્સ ટીમ અથવા ઓફિસ હેલ્પલાઇન પર સીધો સંપર્ક કરી શકો છો:\n📞 ફોન / WhatsApp: +91 99253 43582\n\nઅમારી ટીમ આપને સંપૂર્ણ સહાય કરશે.`) :
+                `આપ અમારા સેલ્સ એક્ઝિક્યુટિવ સાથે સીધો સંપર્ક કરી શકો છો:\n📞 *${repGu}:* ${repPhone}\n\nઅમારી ટીમ આપને સંપૂર્ણ સહાય કરશે.` :
                 (lang === 'hi') ?
-                (repHi ?
-                    `आप हमारे सेल्स एग्जीक्यूटिव *${repHi}* अथवा हमारी ऑफिस हेल्पलाइन पर संपर्क कर सकते हैं:\n📞 फोन / WhatsApp: +91 99253 43582\n\nहमारी टीम आपकी पूरी सहायता करेगी।` :
-                    `आप हमारी सेल्स टीम अथवा ऑफिस हेल्पलाइन पर सीधे संपर्क कर सकते हैं:\n📞 फोन / WhatsApp: +91 99253 43582\n\nहमारी टीम आपकी पूरी सहायता करेगी।`) :
-                (repEn ?
-                    `You can reach our Sales Executive *${repEn}* or our office helpline:\n📞 Phone / WhatsApp: +91 99253 43582\n\nOur team will assist you immediately.` :
-                    `You can directly reach our sales team or office helpline:\n📞 Phone / WhatsApp: +91 99253 43582\n\nOur team will assist you immediately.`);
+                `आप हमारे सेल्स एग्जीक्यूटिव से सीधे संपर्क कर सकते हैं:\n📞 *${repHi}:* ${repPhone}\n\nहमारी टीम आपकी पूरी सहायता करेगी।` :
+                `You can reach our Sales Executive directly:\n📞 *${repEn}:* ${repPhone}\n\nOur team will assist you immediately.`;
             await sendWhatsAppText(fromPhone, contactMsg);
             return res.sendStatus(200);
         }
@@ -503,15 +527,13 @@ app.post('/webhook', async (req, res) => {
         // WATCH VIDEOS DIRECT ACTION (When customer taps [🎥 વિડીયો જુઓ] button)
         if (interactiveId.startsWith('btn_video')) {
             const lang = interactiveId.endsWith('_hi') ? 'hi' : interactiveId.endsWith('_gu') ? 'gu' : 'en';
-            const repGu = userState.assignedRepGu || 'શ્રી અનિલભાઈ પંચાલ';
-            const repHi = userState.assignedRepHi || 'श्री अनिल पांचाल';
-            const repEn = userState.assignedRepEn || 'Mr. Anil Panchal';
+            const repPhone = userState.assignedRepPhone || '+91 99253 43582';
 
             const mediaMsg = (lang === 'gu') ?
-                `🎥 *જય શ્રી અંબે ફૂડ મશીનરી - લાઈવ ડેમો વિડીયો:*\n\nઅમારા થ્રી-ફેઝ કોમર્શિયલ પલ્વરાઇઝર મશીનોના લાઈવ ગ્રાઇન્ડીંગ ડેમો નીચે આપેલ સત્તાવાર લિંક્સ પર જુઓ:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nકોઈપણ માહિતી અથવા કવોટેશન માટે સંપર્ક કરો:\n📞 *ઓફિસ હેલ્પલાઇન: +91 99253 43582*` :
+                `🎥 *જય શ્રી અંબે ફૂડ મશીનરી - લાઈવ ડેમો વિડીયો:*\n\nઅમારા થ્રી-ફેઝ કોમર્શિયલ પલ્વરાઇઝર મશીનોના લાઈવ ગ્રાઇન્ડીંગ ડેમો નીચે આપેલ સત્તાવાર લિંક્સ પર જુઓ:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nકોઈપણ માહિતી અથવા કવોટેશન માટે સંપર્ક કરો:\n📞 *સંપર્ક:* ${repPhone}` :
                 (lang === 'hi') ?
-                `🎥 *जय श्री अम्बे फूड मशीनरी - लाइव डेमो वीडियो:*\n\nहमारी थ्री-फेज कमर्शियल पल्वराइजर मशीनों के लाइव ग्राइंडिंग डेमो नीचे दिए गए आधिकारिक लिंक्स पर देखें:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nकिसी भी जानकारी या कोटेशन के लिए संपर्क करें:\n📞 *ऑफिस हेल्पलाइन: +91 99253 43582*` :
-                `🎥 *Jay Shree Ambe Food Machinery - Live Demo Videos:*\n\nWatch our three-phase commercial pulverizers in continuous live operation on our official channels:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nFor pricing and technical assistance:\n📞 *Office Helpline: +91 99253 43582*`;
+                `🎥 *जय श्री अम्बे फूड मशीनरी - लाइव डेमो वीडियो:*\n\nहमारी थ्री-फेज कमर्शियल पल्वराइजर मशीनों के लाइव ग्राइंडिंग डेमो नीचे दिए गए आधिकारिक लिंक्स पर देखें:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nकिसी भी जानकारी या कोटेशन के लिए संपर्क करें:\n📞 *संपर्क:* ${repPhone}` :
+                `🎥 *Jay Shree Ambe Food Machinery - Live Demo Videos:*\n\nWatch our three-phase commercial pulverizers in continuous live operation on our official channels:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nFor pricing and technical assistance:\n📞 *Contact:* ${repPhone}`;
 
             await sendWhatsAppText(fromPhone, mediaMsg);
             return res.sendStatus(200);
@@ -649,24 +671,20 @@ app.post('/webhook', async (req, res) => {
                 lower.includes('youtube') || lower.includes('facebook') || lower.includes('demo') ||
                 lower.includes('photo') || lower.includes('image')) {
 
+                const repPhone = userState.assignedRepPhone || '+91 99253 43582';
                 const mediaMsg = (lang === 'gu') ?
-                    `🎥 *લાઈવ મશીન ડેમો વિડીયો અને ફોટા:*\n\nઅમારા પલ્વરાઇઝર મશીનોના લાઈવ ગ્રાઇન્ડીંગ ડેમો નીચે આપેલ સત્તાવાર લિંક્સ પર જુઓ:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nકોઈપણ તાત્કાલિક માહિતી માટે સંપર્ક કરો:\n📞 *ઓફિસ હેલ્પલાઇન: +91 99253 43582*` :
+                    `🎥 *લાઈવ મશીન ડેમો વિડીયો અને ફોટા:*\n\nઅમારા પલ્વરાઇઝર મશીનોના લાઈવ ગ્રાઇન્ડીંગ ડેમો નીચે આપેલ સત્તાવાર લિંક્સ પર જુઓ:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nકોઈપણ તાત્કાલિક માહિતી માટે સંપર્ક કરો:\n📞 *સંપર્ક:* ${repPhone}` :
                     (lang === 'hi') ?
-                    `🎥 *लाइव मशीन डेमो वीडियो और फोटो:*\n\nहमारी पल्वराइजर मशीनों के लाइव ग्राइंडिंग डेमो नीचे दिए गए आधिकारिक लिंक्स पर देखें:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nकिसी भी त्वरित जानकारी के लिए संपर्क करें:\n📞 *ऑफिस हेल्पलाइन: +91 99253 43582*` :
-                    `🎥 *Live Machine Demo Videos & Photos:*\n\nWatch our commercial pulverizers in live continuous operation on our official channels:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nFor any immediate assistance:\n📞 *Office Helpline: +91 99253 43582*`;
+                    `🎥 *लाइव मशीन डेमो वीडियो और फोटो:*\n\nहमारी पल्वराइजर मशीनों के लाइव ग्राइंडिंग डेमो नीचे दिए गए आधिकारिक लिंक्स पर देखें:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nकिसी भी त्वरित जानकारी के लिए संपर्क करें:\n📞 *संपर्क:* ${repPhone}` :
+                    `🎥 *Live Machine Demo Videos & Photos:*\n\nWatch our commercial pulverizers in live continuous operation on our official channels:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nFor any immediate assistance:\n📞 *Contact:* ${repPhone}`;
 
                 await sendWhatsAppText(fromPhone, mediaMsg);
                 return res.sendStatus(200);
             }
 
-            // Case A: Customer already COMPLETED inquiry and sends extra message
+            // Case A: Customer already COMPLETED inquiry and sends extra question
             if (userState.step === 'COMPLETED') {
-                const completedReply = (lang === 'gu') ?
-                    `🙏 આપની પૂછપરછ સફળતાપૂર્વક નોંધાઈ ગઈ છે. અમારા સેલ્સ એક્ઝિક્યુટિવ ટૂંક સમયમાં આપનો સંપર્ક કરશે.\n\nનવી પૂછપરછ શરૂ કરવા માટે *Hi* લખીને મોકલો.` :
-                    (lang === 'hi') ?
-                    `🙏 आपकी पूछताछ सफलतापूर्वक दर्ज हो चुकी है। हमारे सेल्स एग्जीक्यूटिव जल्द ही आपसे संपर्क करेंगे।\n\nनई पूछताछ शुरू करने के लिए *Hi* लिखकर भेजें।` :
-                    `🙏 Your inquiry has already been registered. Our sales executive will contact you shortly.\n\nTo start a new inquiry, type *Hi*.`;
-                await sendWhatsAppText(fromPhone, completedReply);
+                await answerWithGemini(fromPhone, incomingText, userState);
                 return res.sendStatus(200);
             }
 
@@ -683,6 +701,7 @@ app.post('/webhook', async (req, res) => {
                     await saveCustomerState(fromPhone, userState);
 
                     await syncLeadToOdoo(fromPhone, userState);
+                    await saveCustomerState(fromPhone, userState);
                     await syncLeadToSupabase(fromPhone, userState);
                     await sendLeadConfirmation(fromPhone, userState, lang);
                     return res.sendStatus(200);
@@ -717,29 +736,14 @@ app.post('/webhook', async (req, res) => {
                 await saveCustomerState(fromPhone, userState);
 
                 await syncLeadToOdoo(fromPhone, userState);
+                await saveCustomerState(fromPhone, userState);
                 await syncLeadToSupabase(fromPhone, userState);
                 await sendLeadConfirmation(fromPhone, userState, lang);
                 return res.sendStatus(200);
             }
 
-            // Case C: Customer sent text before choosing a language (LANG / INIT step)
-            if (!userState.step || userState.step === 'INIT' || userState.step === 'LANG') {
-                global.customerState[fromPhone] = { step: 'LANG' };
-                await sendInteractiveButtons(fromPhone, "Welcome to Jay Shree Ambe Food Machinery! 🙏\nDirect Manufacturer of Commercial Pulverizers.\n\nPlease select your preferred language:\nકૃપા કરીને આપની ભાષા પસંદ કરો:\nकृपया अपनी भाषा चुनें:", [
-                    { id: 'lang_en', title: 'English' },
-                    { id: 'lang_hi', title: 'हिंदी' },
-                    { id: 'lang_gu', title: 'ગુજરાતી' }
-                ]);
-                return res.sendStatus(200);
-            }
-
-            // Case D: Customer sent text while in the middle of Phase/Category/Type/HP selection
-            const promptGuide = (lang === 'gu') ?
-                `કૃપા કરીને આગળ વધવા માટે ઉપર આપેલા વિકલ્પોમાંથી પસંદ કરો, અથવા શરૂઆતથી શરૂ કરવા માટે *Hi* લખો. 🙏` :
-                (lang === 'hi') ?
-                `कृपया आगे बढ़ने के लिए ऊपर दिए गए विकल्पों में से चयन करें, या दोबारा शुरू करने के लिए *Hi* लिखें। 🙏` :
-                `Please select one of the options above to proceed, or type *Hi* to restart. 🙏`;
-            await sendWhatsAppText(fromPhone, promptGuide);
+            // Case C & D: Customer sent text/question while choosing or browsing
+            await answerWithGemini(fromPhone, incomingText, userState);
             return res.sendStatus(200);
         }
 
@@ -749,6 +753,71 @@ app.post('/webhook', async (req, res) => {
         res.sendStatus(500);
     }
 });
+
+// Helper: Answer customer free-form questions using Gemini AI & Product Catalog
+async function answerWithGemini(toPhone, incomingText, userState) {
+    const lang = userState.lang || 'hi';
+    const repName = userState.assignedRep || 'Our Sales Team';
+    const repPhone = userState.assignedRepPhone || '+91 99253 43582';
+
+    if (!geminiModel) {
+        const fallbackGuide = (lang === 'gu') ?
+            `કોઈપણ માહિતી અથવા કવોટેશન માટે આપ અમારા સેલ્સ એક્ઝિક્યુટિવનો સંપર્ક કરી શકો છો:\n📞 *સંપર્ક:* ${repPhone}` :
+            (lang === 'hi') ?
+            `किसी भी जानकारी या कोटेशन के लिए आप हमारे सेल्स एग्जीक्यूटिव से सीधे संपर्क कर सकते हैं:\n📞 *संपर्क:* ${repPhone}` :
+            `For any product inquiry or pricing, you can reach our sales team:\n📞 *Contact:* ${repPhone}`;
+        await sendWhatsAppText(toPhone, fallbackGuide);
+        return;
+    }
+
+    try {
+        const userLang = userState.lang || 'auto';
+        const prompt = `Customer WhatsApp Phone: ${toPhone}
+Customer Preferred Language: ${userLang}
+Assigned Sales Executive: ${repName} (${repPhone})
+Customer Question: "${incomingText}"
+
+INSTRUCTIONS:
+1. Provide a polite, helpful, and concise answer directly based on the Jay Shree Ambe catalog in your system instruction.
+2. Reply in the same language the customer asked (Gujarati, Hindi, or English).
+3. If the customer asks in Hindi, write in pure Hindi (Devanagari script). If Gujarati, write in pure Gujarati script. No Hinglish/Gujlish.
+4. If the customer is inquiring about pricing or quotation, mention the catalog price and invite them to connect with ${repName} (${repPhone}).
+5. Keep the reply short and readable (2 to 4 sentences maximum) for mobile WhatsApp.`;
+
+        const result = await geminiModel.generateContent(prompt);
+        const aiReply = result.response.text().trim();
+
+        if (aiReply) {
+            await sendWhatsAppText(toPhone, aiReply);
+        }
+
+        // Send follow-up interactive buttons so customer can easily continue the tap funnel!
+        const buttons = (lang === 'gu') ? [
+            { id: 'btn_restart_gu', title: '📋 મશીન જુઓ' },
+            { id: 'talk_sales_gu', title: '📞 સંપર્ક કરો' }
+        ] : (lang === 'hi') ? [
+            { id: 'btn_restart_hi', title: '📋 मशीन देखें' },
+            { id: 'talk_sales_hi', title: '📞 संपर्क करें' }
+        ] : [
+            { id: 'btn_restart_en', title: '📋 View Machines' },
+            { id: 'talk_sales_en', title: '📞 Contact Sales' }
+        ];
+
+        const promptText = (lang === 'gu') ?
+            "મશીન પસંદ કરવા અથવા સેલ્સ એક્ઝિક્યુટિવ સાથે સીધી વાત કરવા નીચે આપેલ વિકલ્પ પસંદ કરો:" :
+            (lang === 'hi') ?
+            "मशीन चुनने अथवा सेल्स एग्जीक्यूटिव से सीधे संपर्क के लिए नीचे दिया गया विकल्प चुनें:" :
+            "Select an option below to browse machines or contact our sales executive:";
+
+        await sendInteractiveButtons(toPhone, promptText, buttons);
+    } catch (err) {
+        console.error('Gemini error:', err.message);
+        const fallbackGuide = (lang === 'gu') ?
+            `કોઈપણ માહિતી અથવા કવોટેશન માટે આપ અમારા સેલ્સ એક્ઝિક્યુટિવનો સંપર્ક કરી શકો છો:\n📞 *સંપર્ક:* ${repPhone}` :
+            `किसी भी जानकारी या कोटेशन के लिए आप हमारे सेल्स एग्जीक्यूटिव से संपर्क कर सकते हैं:\n📞 *संपर्क:* ${repPhone}`;
+        await sendWhatsAppText(toPhone, fallbackGuide);
+    }
+}
 
 // Helper: Send Interactive Buttons (Max 3)
 async function sendInteractiveButtons(toPhone, bodyText, buttons) {
@@ -832,17 +901,17 @@ async function sendWhatsAppText(toPhone, textMsg) {
     }
 }
 
-// Sales Team (9 Members for Round-Robin Lead Rotation in ViduCRM)
+// Sales Team (9 Members for Round-Robin Lead Rotation in ViduCRM with Direct Phone Numbers)
 const SALES_TEAM = [
-    { id: 6, name: 'Anilbhai', gu: 'શ્રી અનિલભાઈ પંચાલ', hi: 'श्री अनिल पांचाल', en: 'Mr. Anil Panchal' },
-    { id: 9, name: 'Ankitbhai', gu: 'શ્રી અંકિતભાઈ', hi: 'श्री अंकितभाई', en: 'Mr. Ankitbhai' },
-    { id: 7, name: 'Hemali', gu: 'હેમાલીબેન', hi: 'हेमाली जी', en: 'Ms. Hemali' },
-    { id: 10, name: 'Lata', gu: 'લતાબેન', hi: 'लता जी', en: 'Ms. Lata' },
-    { id: 4211, name: 'Mansi', gu: 'માનસીબેન', hi: 'मानसी जी', en: 'Ms. Mansi' },
-    { id: 4229, name: 'Mukeshbhai', gu: 'શ્રી મુકેશભાઈ', hi: 'श्री मुकेशभाई', en: 'Mr. Mukeshbhai' },
-    { id: 4230, name: 'Priyanshi', gu: 'પ્રિયાંશીબેન', hi: 'प्रियांशी जी', en: 'Ms. Priyanshi' },
-    { id: 4203, name: 'Ritu', gu: 'રીતુબેન', hi: 'रितु जी', en: 'Ms. Ritu' },
-    { id: 8, name: 'Siya', gu: 'સિયાબેન', hi: 'सिया जी', en: 'Ms. Siya' }
+    { id: 6, name: 'Anilbhai', phone: '+91 99253 43582', gu: 'શ્રી અનિલભાઈ પંચાલ', hi: 'श्री अनिल पांचाल', en: 'Mr. Anil Panchal' },
+    { id: 9, name: 'Ankitbhai', phone: '+91 81606 94888', gu: 'શ્રી અંકિતભાઈ', hi: 'श्री अंकितभाई', en: 'Mr. Ankitbhai' },
+    { id: 7, name: 'Hemali', phone: '+91 76228 85040', gu: 'હેમાલીબેન', hi: 'हेमाली जी', en: 'Ms. Hemali' },
+    { id: 10, name: 'Lata', phone: '+91 72018 90809', gu: 'લતાબેન', hi: 'लता जी', en: 'Ms. Lata' },
+    { id: 4211, name: 'Mansi', phone: '+91 87809 64019', gu: 'માનસીબેન', hi: 'मानसी जी', en: 'Ms. Mansi' },
+    { id: 4229, name: 'Mukeshbhai', phone: '+91 90545 85040', gu: 'શ્રી મુકેશભાઈ', hi: 'श्री मुकेशभाई', en: 'Mr. Mukeshbhai' },
+    { id: 4230, name: 'Priyanshi', phone: '+91 93282 63342', gu: 'પ્રિયાંશીબેન', hi: 'प्रियांशी जी', en: 'Ms. Priyanshi' },
+    { id: 4203, name: 'Ritu', phone: '+91 79904 71987', gu: 'રીતુબેન', hi: 'रितु जी', en: 'Ms. Ritu' },
+    { id: 8, name: 'Siya', phone: '+91 97239 28746', gu: 'સિયાબેન', hi: 'सिया जी', en: 'Ms. Siya' }
 ];
 // Helper: Push lead to Odoo CRM with Salesperson Assignment (True Round-Robin from Odoo History)
 function syncLeadToOdoo(phone, leadData) {
@@ -858,6 +927,7 @@ function syncLeadToOdoo(phone, leadData) {
                     leadData.assignedRepGu = assignedRep.gu;
                     leadData.assignedRepHi = assignedRep.hi;
                     leadData.assignedRepEn = assignedRep.en;
+                    leadData.assignedRepPhone = assignedRep.phone;
                     return resolve(false);
                 }
 
@@ -887,6 +957,7 @@ function syncLeadToOdoo(phone, leadData) {
                     leadData.assignedRepGu = assignedRep.gu;
                     leadData.assignedRepHi = assignedRep.hi;
                     leadData.assignedRepEn = assignedRep.en;
+                    leadData.assignedRepPhone = assignedRep.phone;
 
                     const leadRecord = {
                         name: `WhatsApp Lead: ${leadData.name || 'Customer'} - ${leadData.hp || '20 HP'} (${leadData.typeEn || leadData.type || 'Commercial'})`,
@@ -895,14 +966,14 @@ function syncLeadToOdoo(phone, leadData) {
                         phone: phone,
                         city: leadData.city || '',
                         user_id: assignedRep.id,
-                        description: `Assigned Sales Executive: ${assignedRep.name}\nCategory: ${leadData.categoryEn || leadData.category || ''}\nType: ${leadData.typeEn || leadData.type || ''}\nCapacity: ${leadData.hp || ''}\nState: ${leadData.state || ''}\nLanguage: ${leadData.lang || ''}\nSource: WhatsApp AI Interactive Agent`
+                        description: `Assigned Sales Executive: ${assignedRep.name} (${assignedRep.phone})\nCategory: ${leadData.categoryEn || leadData.category || ''}\nType: ${leadData.typeEn || leadData.type || ''}\nCapacity: ${leadData.hp || ''}\nState: ${leadData.state || ''}\nLanguage: ${leadData.lang || ''}\nSource: WhatsApp AI Interactive Agent`
                     };
 
                     models.methodCall('execute_kw', [ODOO_DB, uid, ODOO_PASS, 'crm.lead', 'create', [leadRecord]], (leadErr, leadId) => {
                         if (leadErr) {
                             console.error('Odoo lead creation error:', leadErr);
                         } else {
-                            console.log(`Successfully created Odoo lead ID: ${leadId} rotated to: ${assignedRep.name} (Index ${nextIndex}/${SALES_TEAM.length})`);
+                            console.log(`Successfully created Odoo lead ID: ${leadId} rotated to: ${assignedRep.name} (${assignedRep.phone}) (Index ${nextIndex}/${SALES_TEAM.length})`);
                         }
                         resolve(true);
                     });
@@ -916,6 +987,7 @@ function syncLeadToOdoo(phone, leadData) {
             leadData.assignedRepGu = assignedRep.gu;
             leadData.assignedRepHi = assignedRep.hi;
             leadData.assignedRepEn = assignedRep.en;
+            leadData.assignedRepPhone = assignedRep.phone;
             resolve(false);
         }
     });
