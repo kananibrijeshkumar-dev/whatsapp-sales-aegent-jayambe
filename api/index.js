@@ -259,20 +259,24 @@ function parseNameAndLocation(inputStr, defaultLang = 'en') {
 
     const detectedName = words.join(' ').trim() || 'Valued Customer';
 
-    // If city wasn't in our database, fallback to comma / newline / hyphen split
+    // If city wasn't in our database, check if input was split by comma, newline, or slash
     if (!detectedCity) {
         const parts = inputStr.split(/[\r\n,/-]+/);
-        if (parts.length >= 2) {
+        if (parts.length >= 2 && parts[1].trim()) {
+            const rawCity = parts[1].trim();
+            const lowerCity = rawCity.toLowerCase();
+            const mappedState = CITY_STATE_MAP[lowerCity]?.state || 'India';
             return {
                 name: parts[0].trim() || 'Valued Customer',
-                city: parts[1].trim() || 'India',
-                state: parts[2] ? parts[2].trim() : 'India'
+                city: rawCity,
+                state: mappedState
             };
         }
+        // ONLY name was provided!
         return {
             name: detectedName,
-            city: 'Gujarat/India',
-            state: 'India'
+            city: null,
+            state: null
         };
     }
 
@@ -281,6 +285,82 @@ function parseNameAndLocation(inputStr, defaultLang = 'en') {
         city: detectedCity,
         state: detectedState
     };
+}
+
+
+// Helper: Persist Customer Session to Memory & Supabase
+async function saveCustomerState(phone, state) {
+    if (!phone) return;
+    global.customerState[phone] = state;
+    if (supabase) {
+        try {
+            await supabase.from('whatsapp_customers').upsert([{
+                phone: phone,
+                name: state.name || null,
+                state: 'SESSION:' + JSON.stringify(state),
+                last_message: new Date().toISOString()
+            }], { onConflict: 'phone' });
+        } catch (e) {
+            try {
+                await supabase.from('whatsapp_customers').insert([{
+                    phone: phone,
+                    name: state.name || null,
+                    state: 'SESSION:' + JSON.stringify(state),
+                    last_message: new Date().toISOString()
+                }]);
+            } catch (err) {}
+        }
+    }
+}
+
+// Helper: Restore Customer Session from Memory or Supabase
+async function getCustomerState(phone) {
+    if (!phone) return { lang: 'en', step: 'INIT' };
+    if (global.customerState[phone]) {
+        return global.customerState[phone];
+    }
+    if (supabase) {
+        try {
+            const { data } = await supabase
+                .from('whatsapp_customers')
+                .select('state')
+                .eq('phone', phone)
+                .order('last_message', { ascending: false })
+                .limit(1);
+            if (data && data.length > 0 && data[0].state && data[0].state.startsWith('SESSION:')) {
+                const restored = JSON.parse(data[0].state.replace('SESSION:', ''));
+                global.customerState[phone] = restored;
+                return restored;
+            }
+        } catch (e) {}
+    }
+    return { lang: 'en', step: 'INIT' };
+}
+
+// Helper: Send Full Lead Confirmation & Sales Hand-off
+async function sendLeadConfirmation(fromPhone, userState, lang) {
+    const repGu = userState.assignedRepGu || 'અમારા સેલ્સ એક્ઝિક્યુટિવ';
+    const repHi = userState.assignedRepHi || 'हमारे सेल्स एग्जीक्यूटिव';
+    const repEn = userState.assignedRepEn || 'Our Sales Executive';
+
+    const thankMsg = (lang === 'gu') ?
+        `✅ *આપની પૂછપરછ સફળતાપૂર્વક નોંધાઈ ગઈ છે!* 🙏\n\n📋 *પૂછપરછ વિગતો:*\n• *ગ્રાહક નામ:* ${userState.name}\n• *મશીન:* ${userState.hp || '20 HP'} (${userState.type || 'કોમર્શિયલ'})\n• *સ્થળ:* ${userState.city}, ${userState.state}\n\nઅમારા સેલ્સ એક્ઝિક્યુટિવ *${repGu}* ટૂંક સમયમાં બેસ્ટ કવોટેશન સાથે આપનો સંપર્ક કરશે.\n📞 *ઓફિસ હેલ્પલાઇન:* +91 99253 43582\n\n🌐 *સત્તાવાર વેબસાઇટ:*\nhttps://jayambefoodmachinery.com\n\n🎥 *લાઈવ મશીન ડેમો વિડીયો:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/` :
+        (lang === 'hi') ?
+        `✅ *आपकी पूछताछ सफलतापूर्वक दर्ज कर ली गई है!* 🙏\n\n📋 *पूछताछ विवरण:*\n• *ग्राहक नाम:* ${userState.name}\n• *मशीन:* ${userState.hp || '20 HP'} (${userState.type || 'कमर्शियल'})\n• *स्थान:* ${userState.city}, ${userState.state}\n\nहमारे सेल्स एग्जीक्यूटिव *${repHi}* जल्द ही सर्वोत्तम कोटेशन के साथ आपसे संपर्क करेंगे।\n📞 *ऑफिस हेल्पलाइन:* +91 99253 43582\n\n🌐 *आधिकारिक वेबसाइट:*\nhttps://jayambefoodmachinery.com\n\n🎥 *लाइव मशीन डेमो वीडियो:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/` :
+        `✅ *Your inquiry has been successfully registered!* 🙏\n\n📋 *Inquiry Summary:*\n• *Customer Name:* ${userState.name}\n• *Machine:* ${userState.hp || '20 HP'} (${userState.type || 'Commercial'})\n• *Location:* ${userState.city}, ${userState.state}\n\nOur Sales Executive *${repEn}* will contact you shortly with the best pricing.\n📞 *Office Helpline:* +91 99253 43582\n\n🌐 *Official Website:*\nhttps://jayambefoodmachinery.com\n\n🎥 *Live Machine Demo Videos:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/`;
+
+    const finalButtons = (lang === 'gu') ? [
+        { id: 'btn_video_gu', title: '🎥 વિડીયો જુઓ' },
+        { id: 'talk_sales_gu', title: '📞 સંપર્ક કરો' }
+    ] : (lang === 'hi') ? [
+        { id: 'btn_video_hi', title: '🎥 वीडियो देखें' },
+        { id: 'talk_sales_hi', title: '📞 संपर्क करें' }
+    ] : [
+        { id: 'btn_video_en', title: '🎥 Watch Videos' },
+        { id: 'talk_sales_en', title: '📞 Contact Sales' }
+    ];
+
+    await sendInteractiveButtons(fromPhone, thankMsg, finalButtons);
 }
 
 const processedMessages = new Set();
@@ -334,11 +414,11 @@ app.post('/webhook', async (req, res) => {
         }
 
         const lower = incomingText.toLowerCase();
-        let userState = global.customerState[fromPhone] || { lang: 'en', step: 'INIT' };
+        let userState = await getCustomerState(fromPhone);
 
         // 0. RESET / START (On explicit greetings or start keywords)
         if (isGreeting(incomingText)) {
-            global.customerState[fromPhone] = { step: 'LANG' };
+            await saveCustomerState(fromPhone, { step: 'LANG' });
             await sendInteractiveButtons(fromPhone, "Welcome to Jay Shree Ambe Food Machinery! 🙏\nDirect Manufacturer of Commercial Pulverizers.\n\nPlease select your preferred language:\nકૃપા કરીને આપની ભાષા પસંદ કરો:\nकृपया अपनी भाषा चुनें:", [
                 { id: 'lang_en', title: 'English' },
                 { id: 'lang_hi', title: 'हिंदी' },
@@ -352,7 +432,7 @@ app.post('/webhook', async (req, res) => {
             const lang = interactiveId === 'lang_hi' ? 'hi' : interactiveId === 'lang_gu' ? 'gu' : 'en';
             userState.lang = lang;
             userState.step = 'PHASE';
-            global.customerState[fromPhone] = userState;
+            await saveCustomerState(fromPhone, userState);
 
             if (lang === 'gu') {
                 await sendInteractiveButtons(fromPhone, "આપને કયો પાવર કનેક્શન સપ્લાય જોઈએ છે?", [
@@ -377,7 +457,7 @@ app.post('/webhook', async (req, res) => {
         if (interactiveId.startsWith('ph_single')) {
             const lang = interactiveId.endsWith('_hi') ? 'hi' : interactiveId.endsWith('_gu') ? 'gu' : 'en';
             userState.lang = lang;
-            global.customerState[fromPhone] = userState;
+            await saveCustomerState(fromPhone, userState);
 
             if (lang === 'gu') {
                 await sendInteractiveButtons(fromPhone, "જય શ્રી અંબે ફૂડ મશીનરીમાં આપનું સ્વાગત છે. 🙏\n\n*મહત્વપૂર્ણ નોંધ:* અમે ખાસ કરીને હેવી-ડ્યુટી *થ્રી-ફેઝ કોમર્શિયલ પલ્વરાઇઝર (5 HP થી 30 HP)* નું જ ઉત્પાદન કરીએ છીએ. અમે ઘરેલુ કે સિંગલ-ફેઝ મશીન બનાવતા નથી.\n\nશું આપ અમારા થ્રી-ફેઝ કોમર્શિયલ મશીનો જોવા માંગો છો?", [
@@ -443,7 +523,7 @@ app.post('/webhook', async (req, res) => {
             userState.lang = lang;
             userState.phase = 'Three Phase';
             userState.step = 'CATEGORY';
-            global.customerState[fromPhone] = userState;
+            await saveCustomerState(fromPhone, userState);
 
             const catTitle = (lang === 'gu') ? 'આપ કયા પ્રકારનું મશીન શોધી રહ્યા છો?' :
                              (lang === 'hi') ? 'आप किस प्रकार की मशीन ढूंढ रहे हैं?' :
@@ -483,7 +563,7 @@ app.post('/webhook', async (req, res) => {
             userState.category = incomingText;
             userState.categoryEn = catNameEn;
             userState.step = 'TYPE';
-            global.customerState[fromPhone] = userState;
+            await saveCustomerState(fromPhone, userState);
 
             const qText = (lang === 'gu') ? 'આપ સાયક્લોન ડસ્ટ કલેક્ટર સાથે મશીન મેળવવા માંગો છો કે સ્ટાન્ડર્ડ?' :
                           (lang === 'hi') ? 'क्या आप साइक्लोन डस्ट कलेक्टर के साथ मशीन चाहते हैं या साधारण?' :
@@ -506,7 +586,7 @@ app.post('/webhook', async (req, res) => {
             userState.lang = lang;
             userState.type = incomingText;
             userState.step = 'HP';
-            global.customerState[fromPhone] = userState;
+            await saveCustomerState(fromPhone, userState);
 
             const hpTitle = (lang === 'gu') ? 'કૃપા કરીને જરૂરી મોટર ક્ષમતા (HP) પસંદ કરો:' :
                             (lang === 'hi') ? 'कृपया आवश्यक मोटर क्षमता (HP) चुनें:' :
@@ -548,7 +628,7 @@ app.post('/webhook', async (req, res) => {
             userState.type = typeName;
             userState.typeEn = typeNameEn;
             userState.step = 'AWAITING_DETAILS';
-            global.customerState[fromPhone] = userState;
+            await saveCustomerState(fromPhone, userState);
 
             const formPrompt = (lang === 'gu') ? 
                 `ખૂબ સરસ! આપની પસંદગી: *${hpNum} પલ્વરાઇઝર (${typeName})*.\n\nઆપના માટે ઓફિશિયલ કવોટેશન તૈયાર કરવા માટે, કૃપા કરીને આપનું *પૂરું નામ* અને *શહેર અથવા ગામ* અહીં લખીને મોકલો:\n\n*(દા.ત. રમેશભાઈ પટેલ, સુરત)*` :
@@ -590,42 +670,55 @@ app.post('/webhook', async (req, res) => {
                 return res.sendStatus(200);
             }
 
-            // Case B: ONLY when customer is actually asked to submit their Name & City!
+            // Case B1: Customer entered details when asked for Name & City
             if (userState.step === 'AWAITING_DETAILS') {
                 const parsed = parseNameAndLocation(incomingText, lang);
-                userState.name = parsed.name;
-                userState.city = parsed.city;
-                userState.state = parsed.state;
-                userState.step = 'COMPLETED';
-                global.customerState[fromPhone] = userState;
 
-                // Sync to Odoo CRM and Supabase
+                // Option 1: Customer sent BOTH Name & City in one message!
+                if (parsed.city) {
+                    userState.name = parsed.name;
+                    userState.city = parsed.city;
+                    userState.state = parsed.state || 'India';
+                    userState.step = 'COMPLETED';
+                    await saveCustomerState(fromPhone, userState);
+
+                    await syncLeadToOdoo(fromPhone, userState);
+                    await syncLeadToSupabase(fromPhone, userState);
+                    await sendLeadConfirmation(fromPhone, userState, lang);
+                    return res.sendStatus(200);
+                }
+
+                // Option 2: Customer sent ONLY their Name (e.g., 'brijesh' or 'Ramesh Patel')
+                // Save name and ask specifically for City/Village!
+                userState.name = incomingText.trim();
+                userState.step = 'AWAITING_CITY';
+                await saveCustomerState(fromPhone, userState);
+
+                const askCityPrompt = (lang === 'gu') ?
+                    `આભાર *${userState.name}* ભાઈ! 🙏\n\nકૃપા કરીને આપના *શહેર અથવા ગામ*નું નામ લખીને મોકલો (દા.ત. સુરત, અમદાવાદ, રાજકોટ):` :
+                    (lang === 'hi') ?
+                    `धन्यवाद *${userState.name}* जी! 🙏\n\nकृपया अपने *शहर अथवा गाँव* का नाम लिखकर भेजें (उदा. सूरत, अहमदाबाद, राजकोट):` :
+                    `Thank you *${userState.name}*! 🙏\n\nNow please reply with your *City or Village* name (e.g., Surat, Ahmedabad, Rajkot):`;
+
+                await sendWhatsAppText(fromPhone, askCityPrompt);
+                return res.sendStatus(200);
+            }
+
+            // Case B2: Customer sent City / Village after entering Name
+            if (userState.step === 'AWAITING_CITY') {
+                const cleanCity = incomingText.trim();
+                const lowerCity = cleanCity.toLowerCase();
+                const detectedCity = CITY_STATE_MAP[lowerCity]?.city || cleanCity;
+                const detectedState = CITY_STATE_MAP[lowerCity]?.state || 'India';
+
+                userState.city = detectedCity;
+                userState.state = detectedState;
+                userState.step = 'COMPLETED';
+                await saveCustomerState(fromPhone, userState);
+
                 await syncLeadToOdoo(fromPhone, userState);
                 await syncLeadToSupabase(fromPhone, userState);
-
-                // Send Confirmation & Sales Hand-off (Direct Video Links + Interactive Tap Buttons)
-                const repGu = userState.assignedRepGu || 'અમારા સેલ્સ એક્ઝિક્યુટિવ';
-                const repHi = userState.assignedRepHi || 'हमारे सेल्स एग्जीक्यूटिव';
-                const repEn = userState.assignedRepEn || 'Our Sales Executive';
-
-                const thankMsg = (lang === 'gu') ?
-                    `✅ *આપની પૂછપરછ સફળતાપૂર્વક નોંધાઈ ગઈ છે!* 🙏\n\n📋 *પૂછપરછ વિગતો:*\n• *ગ્રાહક નામ:* ${userState.name}\n• *મશીન:* ${userState.hp || '20 HP'} (${userState.type || 'કોમર્શિયલ'})\n• *સ્થળ:* ${userState.city}, ${userState.state}\n\nઅમારા સેલ્સ એક્ઝિક્યુટિવ *${repGu}* ટૂંક સમયમાં બેસ્ટ કવોટેશન સાથે આપનો સંપર્ક કરશે.\n📞 *ઓફિસ હેલ્પલાઇન:* +91 99253 43582\n\n🌐 *સત્તાવાર વેબસાઇટ:*\nhttps://jayambefoodmachinery.com\n\n🎥 *લાઈવ મશીન ડેમો વિડીયો:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/` :
-                    (lang === 'hi') ?
-                    `✅ *आपकी पूछताछ सफलतापूर्वक दर्ज कर ली गई है!* 🙏\n\n📋 *पूछताछ विवरण:*\n• *ग्राहक नाम:* ${userState.name}\n• *मशीन:* ${userState.hp || '20 HP'} (${userState.type || 'कमर्शियल'})\n• *स्थान:* ${userState.city}, ${userState.state}\n\nहमारे सेल्स एग्जीक्यूटिव *${repHi}* जल्द ही सर्वोत्तम कोटेशन के साथ आपसे संपर्क करेंगे।\n📞 *ऑफिस हेल्पलाइन:* +91 99253 43582\n\n🌐 *आधिकारिक वेबसाइट:*\nhttps://jayambefoodmachinery.com\n\n🎥 *लाइव मशीन डेमो वीडियो:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/` :
-                    `✅ *Your inquiry has been successfully registered!* 🙏\n\n📋 *Inquiry Summary:*\n• *Customer Name:* ${userState.name}\n• *Machine:* ${userState.hp || '20 HP'} (${userState.type || 'Commercial'})\n• *Location:* ${userState.city}, ${userState.state}\n\nOur Sales Executive *${repEn}* will contact you shortly with the best pricing.\n📞 *Office Helpline:* +91 99253 43582\n\n🌐 *Official Website:*\nhttps://jayambefoodmachinery.com\n\n🎥 *Live Machine Demo Videos:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/`;
-
-                const finalButtons = (lang === 'gu') ? [
-                    { id: 'btn_video_gu', title: '🎥 વિડીયો જુઓ' },
-                    { id: 'talk_sales_gu', title: '📞 સંપર્ક કરો' }
-                ] : (lang === 'hi') ? [
-                    { id: 'btn_video_hi', title: '🎥 वीडियो देखें' },
-                    { id: 'talk_sales_hi', title: '📞 संपर्क करें' }
-                ] : [
-                    { id: 'btn_video_en', title: '🎥 Watch Videos' },
-                    { id: 'talk_sales_en', title: '📞 Contact Sales' }
-                ];
-
-                await sendInteractiveButtons(fromPhone, thankMsg, finalButtons);
+                await sendLeadConfirmation(fromPhone, userState, lang);
                 return res.sendStatus(200);
             }
 
