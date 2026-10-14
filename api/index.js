@@ -397,10 +397,10 @@ async function sendLeadConfirmation(fromPhone, userState, lang) {
     const repPhone = rep.phone;
 
     const thankMsg = (lang === 'gu') ?
-        `✅ *આપની પૂછપરછ સફળતાપૂર્વક નોંધાઈ ગઈ છે!* 🙏\n\n📋 *પૂછપરછ વિગતો:*\n• *ગ્રાહક નામ:* ${userState.name}\n• *મશીન:* ${userState.hp || '20 HP'} (${userState.type || 'કોમર્શિયલ'})\n• *સ્થળ:* ${userState.city}, ${userState.state}\n\nઅમારા સેલ્સ એક્ઝિક્યુટિવ *${repGu}* ટૂંક સમયમાં બેસ્ટ કવોટેશન સાથે આપનો સંપર્ક કરશે.\n📞 *સીધો સંપર્ક:* ${repPhone}\n\n🌐 *સત્તાવાર વેબસાઇટ:*\nhttps://jayambefoodmachinery.com\n\n🎥 *લાઈવ મશીન ડેમો વિડીયો:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/` :
+        `🏭 *જય શ્રી અંબે ફૂડ મશીનરી* 🏭\n✨ *૩૦+ વર્ષનો ઉત્પાદન અનુભવ*\n━━━━━━━━━━━━━━━━━━━━\n✅ *આપની પૂછપરછ સફળતાપૂર્વક નોંધાઈ ગઈ છે!* 🙏\n\n📋 *પૂછપરછ વિગતો:*\n• 👤 *ગ્રાહક નામ:* ${userState.name}\n• ⚙️ *મશીન:* ${userState.hp || '20 HP'} (${userState.type || 'કોમર્શિયલ'})\n• 📍 *સ્થળ:* ${userState.city}, ${userState.state}\n\n💼 *આપના ડેડિકેટેડ સેલ્સ એક્ઝિક્યુટિવ:*\n👤 *${repGu}*\n📞 *સીધો સંપર્ક:* ${repPhone}\n\nઅમારી ટીમ ટૂંક સમયમાં બેસ્ટ કવોટેશન સાથે આપનો સંપર્ક કરશે.\n━━━━━━━━━━━━━━━━━━━━\n🌐 *સત્તાવાર વેબસાઇટ:*\nhttps://jayambefoodmachinery.com\n\n🎥 *લાઈવ મશીન ડેમો વિડીયો:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/` :
         (lang === 'hi') ?
-        `✅ *आपकी पूछताछ सफलतापूर्वक दर्ज कर ली गई है!* 🙏\n\n📋 *पूछताछ विवरण:*\n• *ग्राहक नाम:* ${userState.name}\n• *मशीन:* ${userState.hp || '20 HP'} (${userState.type || 'कमर्शियल'})\n• *स्थान:* ${userState.city}, ${userState.state}\n\nहमारे सेल्स एग्जीक्यूटिव *${repHi}* जल्द ही सर्वोत्तम कोटेशन के साथ आपसे संपर्क करेंगे।\n📞 *सीधा संपर्क:* ${repPhone}\n\n🌐 *आधिकारिक वेबसाइट:*\nhttps://jayambefoodmachinery.com\n\n🎥 *लाइव मशीन डेमो वीडियो:*\\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/` :
-        `✅ *Your inquiry has been successfully registered!* 🙏\n\n📋 *Inquiry Summary:*\n• *Customer Name:* ${userState.name}\n• *Machine:* ${userState.hp || '20 HP'} (${userState.type || 'Commercial'})\n• *Location:* ${userState.city}, ${userState.state}\n\nOur Sales Executive *${repEn}* will contact you shortly with the best pricing.\n📞 *Direct Contact:* ${repPhone}\n\n🌐 *Official Website:*\nhttps://jayambefoodmachinery.com\n\n🎥 *Live Machine Demo Videos:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/`;
+        `🏭 *जय श्री अम्बे फूड मशीनरी* 🏭\n✨ *३०+ वर्षों का अटूट विश्वास एवं अनुभव*\n━━━━━━━━━━━━━━━━━━━━\n✅ *आपकी पूछताछ सफलतापूर्वक दर्ज कर ली गई है!* 🙏\n\n📋 *पूछताछ विवरण:*\n• 👤 *ग्राहक नाम:* ${userState.name}\n• ⚙️ *मशीन:* ${userState.hp || '20 HP'} (${userState.type || 'कमर्शियल'})\n• 📍 *स्थान:* ${userState.city}, ${userState.state}\n\n💼 *आपके समर्पित सेल्स एग्जीक्यूटिव:*\n👤 *${repHi}*\n📞 *सीधा संपर्क:* ${repPhone}\n\nहमारी टीम जल्द ही सर्वोत्तम कोटेशन के साथ आपसे संपर्क करेगी।\n━━━━━━━━━━━━━━━━━━━━\n🌐 *आधिकारिक वेबसाइट:*\nhttps://jayambefoodmachinery.com\n\n🎥 *लाइव मशीन डेमो वीडियो:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/` :
+        `🏭 *JAY SHREE AMBE FOOD MACHINERY* 🏭\n✨ *30+ Years of Manufacturing Excellence*\n━━━━━━━━━━━━━━━━━━━━\n✅ *Your inquiry has been successfully registered!* 🙏\n\n📋 *Inquiry Summary:*\n• 👤 *Customer Name:* ${userState.name}\n• ⚙️ *Machine:* ${userState.hp || '20 HP'} (${userState.type || 'Commercial'})\n• 📍 *Location:* ${userState.city}, ${userState.state}\n\n💼 *Your Dedicated Sales Executive:*\n👤 *${repEn}*\n📞 *Direct Contact:* ${repPhone}\n\nOur sales executive will contact you shortly with the best factory quotation.\n━━━━━━━━━━━━━━━━━━━━\n🌐 *Official Website:*\nhttps://jayambefoodmachinery.com\n\n🎥 *Live Machine Demo Videos:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/`;
 
     const finalButtons = (lang === 'gu') ? [
         { id: 'btn_video_gu', title: '🎥 વિડીયો જુઓ' },
@@ -538,10 +538,10 @@ app.post('/webhook', async (req, res) => {
             await saveCustomerState(fromPhone, userState);
 
             const contactMsg = (lang === 'gu') ?
-                `આપ અમારા સેલ્સ એક્ઝિક્યુટિવ સાથે સીધો સંપર્ક કરી શકો છો:\n📞 *${rep.gu}:* ${rep.phone}\n\nઅમારી ટીમ આપને સંપૂર્ણ સહાય કરશે.` :
+                `🏭 *જય શ્રી અંબે ફૂડ મશીનરી - સેલ્સ સપોર્ટ* 🏭\n━━━━━━━━━━━━━━━━━━━━\nઆપ અમારા ડેડિકેટેડ સેલ્સ એક્ઝિક્યુટિવ સાથે સીધો સંપર્ક કરી શકો છો:\n\n👤 *${rep.gu}*\n📞 *સીધો સંપર્ક:* ${rep.phone}\n\n✨ મશીન ટેકનિકલ માહિતી અને બેસ્ટ કવોટેશન માટે અમારી ટીમ આપને સંપૂર્ણ સહાય કરશે.` :
                 (lang === 'hi') ?
-                `आप हमारे सेल्स एग्जीक्यूटिव से सीधे संपर्क कर सकते हैं:\n📞 *${rep.hi}:* ${rep.phone}\n\nहमारी टीम आपकी पूरी सहायता करेगी।` :
-                `You can reach our Sales Executive directly:\n📞 *${rep.en}:* ${rep.phone}\n\nOur team will assist you immediately.`;
+                `🏭 *जय श्री अम्बे फूड मशीनरी - सेल्स सपोर्ट* 🏭\n━━━━━━━━━━━━━━━━━━━━\nआप हमारे समर्पित सेल्स एग्जीक्यूटिव से सीधे संपर्क कर सकते हैं:\n\n👤 *${rep.hi}*\n📞 *सीधा संपर्क:* ${rep.phone}\n\n✨ मशीन की तकनीकी जानकारी एवं सर्वोत्तम कोटेशन के लिए हमारी टीम आपकी पूरी सहायता करेगी।` :
+                `🏭 *JAY SHREE AMBE FOOD MACHINERY - SALES SUPPORT* 🏭\n━━━━━━━━━━━━━━━━━━━━\nYou can directly reach our Dedicated Sales Executive:\n\n👤 *${rep.en}*\n📞 *Direct Contact:* ${rep.phone}\n\n✨ Our team will assist you with machine specs and the best quotation.`;
             await sendWhatsAppText(fromPhone, contactMsg);
             return res.sendStatus(200);
         }
@@ -1031,14 +1031,16 @@ async function syncLeadToSupabase(phone, leadData) {
             console.error('Inquiries insert error:', inqErr.message);
         }
 
-        // 2. Sync to whatsapp_customers table (phone, name, state, last_message)
+        // 2. Sync to whatsapp_customers table (phone, name, state, city, last_message)
         try {
-            await supabase.from('whatsapp_customers').insert([{
+            const assignedName = leadData.assignedRep || 'Sales Team';
+            await supabase.from('whatsapp_customers').upsert([{
                 phone: phone,
-                name: leadData.name || null,
+                name: leadData.name ? `${leadData.name} (${assignedName})` : null,
                 state: leadData.state || null,
+                city: leadData.city ? `${leadData.city} [${assignedName}]` : `[${assignedName}]`,
                 last_message: new Date().toISOString()
-            }]);
+            }], { onConflict: 'phone' });
             console.log('Successfully synced to Supabase whatsapp_customers for:', phone);
         } catch (custErr) {
             console.error('whatsapp_customers insert error:', custErr.message);
