@@ -323,7 +323,58 @@ function parseNameAndLocation(inputStr, defaultLang = 'en') {
                 state: mappedState
             };
         }
-        // ONLY name was provided!
+
+        // Smart multi-word detection (e.g., "Vijay yadav firozabad utter pradesh" or "Rajkumar sahu Lukman Chauraha Tikar")
+        const stateKeywords = {
+            'utter pradesh': 'Uttar Pradesh',
+            'uttar pradesh': 'Uttar Pradesh',
+            'up': 'Uttar Pradesh',
+            'madhya pradesh': 'Madhya Pradesh',
+            'mp': 'Madhya Pradesh',
+            'maharashtra': 'Maharashtra',
+            'mh': 'Maharashtra',
+            'rajasthan': 'Rajasthan',
+            'rj': 'Rajasthan',
+            'gujarat': 'Gujarat',
+            'gj': 'Gujarat',
+            'bihar': 'Bihar',
+            'haryana': 'Haryana',
+            'hr': 'Haryana',
+            'punjab': 'Punjab',
+            'west bengal': 'West Bengal'
+        };
+
+        const lowerClean = clean.toLowerCase();
+        for (const [stKey, stName] of Object.entries(stateKeywords)) {
+            if (lowerClean.endsWith(stKey)) {
+                detectedState = stName;
+                const beforeState = clean.substring(0, clean.length - stKey.length).trim();
+                const subWords = beforeState.split(/\s+/);
+                if (subWords.length >= 2) {
+                    const nameLen = subWords.length >= 3 ? 2 : 1;
+                    const name = subWords.slice(0, nameLen).join(' ').trim();
+                    const city = subWords.slice(nameLen).join(' ').trim();
+                    return {
+                        name: name || 'Valued Customer',
+                        city: city || beforeState,
+                        state: detectedState
+                    };
+                }
+            }
+        }
+
+        // If 3 or more words with no state keyword (e.g., "Rajkumar sahu Lukman Chauraha Tikar")
+        if (words.length >= 3) {
+            const name = words.slice(0, 2).join(' ').trim();
+            const city = words.slice(2).join(' ').trim();
+            return {
+                name: name || 'Valued Customer',
+                city: city,
+                state: 'India'
+            };
+        }
+
+        // ONLY 1 or 2 words (e.g. "Ramesh" or "Ramesh Patel") -> ONLY name was provided!
         return {
             name: detectedName,
             city: null,
@@ -1016,14 +1067,16 @@ function syncLeadToOdoo(phone, leadData) {
 async function syncLeadToSupabase(phone, leadData) {
     if (!supabase) return;
     try {
-        // 1. Sync to inquiries table (stores full product, city, and assigned salesperson)
+        // 1. Sync to inquiries table (stores full product, city, and assigned salesperson for commission)
         try {
+            const assignedName = leadData.assignedRep || 'Sales Team';
+            const fullLocation = [leadData.city, leadData.state].filter(Boolean).join(', ') || 'India';
             const inqRecord = {
                 name: leadData.name || 'Valued Customer',
                 phone: phone,
-                city: leadData.city || '',
-                product: `${leadData.category || ''} | ${leadData.type || ''} | ${leadData.hp || ''}`,
-                source: `whatsapp_bot - ${leadData.assignedRep || 'Sales Team'}`
+                city: fullLocation,
+                product: `${leadData.category || ''} | ${leadData.type || ''} | ${leadData.hp || ''}`.replace(/^[\s|]+|[\s|]+$/g, ''),
+                source: `whatsapp_bot - ${assignedName}`
             };
             await supabase.from('inquiries').insert([inqRecord]);
             console.log('Successfully inserted lead into Supabase inquiries table for:', phone);
@@ -1036,9 +1089,9 @@ async function syncLeadToSupabase(phone, leadData) {
             const assignedName = leadData.assignedRep || 'Sales Team';
             await supabase.from('whatsapp_customers').upsert([{
                 phone: phone,
-                name: leadData.name ? `${leadData.name} (${assignedName})` : null,
-                state: leadData.state || null,
-                city: leadData.city ? `${leadData.city} [${assignedName}]` : `[${assignedName}]`,
+                name: leadData.name ? `${leadData.name} [${assignedName}]` : null,
+                state: `${leadData.state || 'India'} (${leadData.hp || '20 HP'})`,
+                city: leadData.city ? `${leadData.city} [Rep: ${assignedName}]` : `[Rep: ${assignedName}]`,
                 last_message: new Date().toISOString()
             }], { onConflict: 'phone' });
             console.log('Successfully synced to Supabase whatsapp_customers for:', phone);
