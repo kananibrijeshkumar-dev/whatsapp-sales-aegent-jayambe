@@ -255,6 +255,27 @@ const CITY_STATE_MAP = {
     'bhubaneswar': { city: 'Bhubaneswar', state: 'Odisha' }
 };
 
+// Helper: Detect Abusive, Vulgar or Insulting Language
+function isAbusive(text) {
+    if (!text || typeof text !== 'string') return false;
+    const clean = text.toLowerCase().replace(/[^a-z0-9\u0A80-\u0AFF\u0900-\u097F\s]/g, ' ');
+    const badPatterns = [
+        /\bbhenchod\b/, /\bbehenchod\b/, /\bbh[ae]n[\s-]?ch[ou]d\b/, /\bbc\b/,
+        /\bmader[\s-]?chod\b/, /\bmadarchod\b/, /\bmaadar[\s-]?chod\b/, /\bmc\b/,
+        /\bchutiya\b/, /\bchutiye\b/, /\bchutya\b/, /\bchootiya\b/, /\bchoot\b/, /\bchut\b/,
+        /\bgandu\b/, /\bgaand\b/, /\bgandfat\b/, /\bgaandu\b/,
+        /\blode\b/, /\blaude\b/, /\blauda\b/, /\bloda\b/, /\blodu\b/,
+        /\bharami\b/, /\bkamina\b/, /\bkameene\b/, /\bkutta\b/,
+        /\bbhosdike\b/, /\bbhosadi\b/, /\bbsdk\b/, /\bbhosad\b/,
+        /\bsaale\b/, /\bsaala\b/,
+        /\brandi\b/, /\braand\b/,
+        /\bfuck\b/, /\bfucker\b/, /\bfucking\b/, /\bmotherfucker\b/, /\bmf\b/,
+        /\bbitch\b/, /\bbastard\b/, /\basshole\b/,
+        /\bગાંડુ\b/, /\bભોસડી\b/, /\bલવડા\b/, /\bહરામી\b/, /\bચૂતિયા\b/
+    ];
+    return badPatterns.some(pattern => pattern.test(clean));
+}
+
 // Helper: Check if incoming text is a greeting or start command
 function isGreeting(text) {
     if (!text || typeof text !== 'string') return false;
@@ -519,6 +540,32 @@ app.post('/webhook', async (req, res) => {
 
         const lower = incomingText.toLowerCase();
         let userState = await getCustomerState(fromPhone);
+
+        // ABUSE FILTER: If customer sends abusive, vulgar, or insulting language
+        if (isAbusive(incomingText)) {
+            const lang = userState.lang || 'hi';
+            const warningMsg = (lang === 'gu') ?
+                `⚠️ *કૃપા કરીને મર્યાદા જાળવો અને આદરપૂર્વક વાત કરો.* 🙏\n\nજય શ્રી અંબે ફૂડ મશીનરીમાં અમે તમામ ગ્રાહકોનું સન્માન કરીએ છીએ.\nજો આપને અમારી કોમર્શિયલ પલ્વરાઇઝર મશીનરી અથવા બિઝનેસ કવોટેશન વિશે માહિતી જોઈતી હોય, તો કૃપા કરીને યોગ્ય રીતે જણાવો. અમારી ટીમ આપને સંપૂર્ણ સહાય કરશે.` :
+                (lang === 'en') ?
+                `⚠️ *Please communicate respectfully and professionally.* 🙏\n\nAt Jay Shree Ambe Food Machinery, we respect all our clients.\nIf you are looking for commercial pulverizer machinery or business quotations, please chat respectfully and our team will be glad to assist you.` :
+                `⚠️ *कृपया मर्यादित और सम्मानजनक भाषा का प्रयोग करें।* 🙏\n\nजय श्री अम्बे फूड मशीनरी में हम सभी ग्राहकों का सम्मान करते हैं।\nयदि आपको हमारी कमर्शियल पल्वराइजर मशीनों अथवा बिजनेस कोटेशन के संबंध में कोई जानकारी चाहिए, तो कृपया सम्मानपूर्वक लिखें। हमारी टीम आपकी पूरी सहायता करेगी।`;
+
+            const warningButtons = (lang === 'gu') ? [
+                { id: 'btn_restart_gu', title: '📋 મશીન જુઓ' },
+                { id: 'talk_sales_gu', title: '📞 સંપર્ક કરો' }
+            ] : (lang === 'en') ? [
+                { id: 'btn_restart_en', title: '📋 View Machines' },
+                { id: 'talk_sales_en', title: '📞 Contact Sales' }
+            ] : [
+                { id: 'btn_restart_hi', title: '📋 मशीन देखें' },
+                { id: 'talk_sales_hi', title: '📞 संपर्क करें' }
+            ];
+
+            await sendWhatsAppText(fromPhone, warningMsg);
+            const promptTitle = (lang === 'gu') ? 'આગળ વધવા માટે વિકલ્પ પસંદ કરો:' : (lang === 'hi') ? 'आगे बढ़ने के लिए विकल्प चुनें:' : 'Please choose an option to proceed:';
+            await sendInteractiveButtons(fromPhone, promptTitle, warningButtons);
+            return res.sendStatus(200);
+        }
 
         // 0. RESET / START (On explicit greetings or start keywords)
         if (isGreeting(incomingText)) {
