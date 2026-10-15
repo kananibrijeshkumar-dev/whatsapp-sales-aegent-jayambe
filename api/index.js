@@ -27,7 +27,8 @@ const part1 = "EAAXTyBC2XwYBShTYsk3Liq9HKdyJcji1GHPY1Qd";
 const part2 = "OUZCsVIHCunjW0naySH2qMIGo5ZAHreyXK7BW0PR";
 const part3 = "1lZAkWZCWR8AjwyFLa3fXM3RTUUTSkFGZCytpSYtGaMd5YLRSKW6J3WCCHRQBrDkZCB4toQwyJjB3LoJZC16aPpH4Y4DIXwZC26s0SGvhmIZBjpFTZB6AZDZD";
 
-const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN || (part1 + part2 + part3);
+const PERM_TOKEN = part1 + part2 + part3;
+const WHATSAPP_TOKEN = PERM_TOKEN;
 let PHONE_NUMBER_ID = (process.env.PHONE_NUMBER_ID && process.env.PHONE_NUMBER_ID !== '1272560265946003')
     ? process.env.PHONE_NUMBER_ID
     : '1260228570511181';
@@ -552,15 +553,23 @@ app.post('/webhook', async (req, res) => {
         let interactiveId = '';
 
         if (messageObj.type === 'text') {
-            incomingText = messageObj.text.body.trim();
+            incomingText = messageObj.text?.body?.trim() || '';
         } else if (messageObj.type === 'interactive') {
-            if (messageObj.interactive.type === 'button_reply') {
+            if (messageObj.interactive?.type === 'button_reply') {
                 interactiveId = messageObj.interactive.button_reply.id;
                 incomingText = messageObj.interactive.button_reply.title;
-            } else if (messageObj.interactive.type === 'list_reply') {
+            } else if (messageObj.interactive?.type === 'list_reply') {
                 interactiveId = messageObj.interactive.list_reply.id;
                 incomingText = messageObj.interactive.list_reply.title;
             }
+        } else if (messageObj.type === 'button') {
+            interactiveId = messageObj.button?.payload || '';
+            incomingText = messageObj.button?.text || '';
+        }
+
+        // Handle incoming Click-to-WhatsApp Meta Ads referral
+        if (!incomingText && messageObj.referral) {
+            incomingText = 'hi';
         }
 
         const lower = incomingText.toLowerCase();
