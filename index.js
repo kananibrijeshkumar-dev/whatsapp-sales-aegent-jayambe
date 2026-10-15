@@ -649,6 +649,71 @@ app.get('/debug-logs', (req, res) => {
     });
 });
 
+// Route: Receive Website Form Lead -> Assign Sales Rep -> Sync to Odoo CRM & Supabase inquiries
+app.post('/api/website-lead', async (req, res) => {
+    try {
+        const { name, phone, product, city, state, zipcode } = req.body || {};
+        if (!phone) {
+            return res.status(400).json({ error: 'Phone number required' });
+        }
+
+        const rep = getDeterministicRepForPhone(phone);
+        const contactName = name || 'Website Visitor';
+        const fullLocation = [city, state].filter(Boolean).join(', ') || 'India';
+        const leadProduct = product || 'Commercial Pulverizer';
+
+        // 1. Sync to Odoo CRM under assigned Sales Rep
+        try {
+            await new Promise((resolve) => {
+                const common = xmlrpc.createSecureClient({ host: 'v1.viducrm.com', port: 443, path: '/xmlrpc/2/common' });
+                const models = xmlrpc.createSecureClient({ host: 'v1.viducrm.com', port: 443, path: '/xmlrpc/2/object' });
+                common.methodCall('authenticate', [ODOO_DB, ODOO_USER, ODOO_PASS, {}], (err, uid) => {
+                    if (err || !uid) return resolve(false);
+                    const description = `Website Inquiry:\nName: ${contactName}\nPhone: ${phone}\nProduct: ${leadProduct}\nLocation: ${fullLocation}\nZipcode: ${zipcode || ''}\nAssigned Sales Executive: ${rep.name} (${rep.phone})`;
+                    const leadRecord = {
+                        name: `Website: ${contactName} - ${phone} (${leadProduct})`,
+                        contact_name: contactName,
+                        phone: phone,
+                        city: city || '',
+                        description: description,
+                        user_id: rep.id
+                    };
+                    models.methodCall('execute_kw', [ODOO_DB, uid, ODOO_PASS, 'crm.lead', 'create', [[leadRecord]]], (err2, leadId) => {
+                        if (!err2 && leadId) {
+                            console.log(`Successfully created Website lead in Odoo CRM for ${phone} assigned to ${rep.name}`);
+                        }
+                        resolve(true);
+                    });
+                });
+            });
+        } catch (odooErr) {
+            console.error('Odoo sync error for website lead:', odooErr.message);
+        }
+
+        // 2. Sync to Supabase inquiries table ONLY (website table) with assigned Sales Rep
+        if (supabase) {
+            try {
+                await supabase.from('inquiries').insert([{
+                    name: contactName,
+                    phone: phone,
+                    city: fullLocation,
+                    product: leadProduct,
+                    zipcode: zipcode || '',
+                    source: `Website - ${rep.name}`
+                }]);
+                console.log(`Synced website lead to Supabase inquiries with rep ${rep.name}`);
+            } catch (supaErr) {
+                console.error('Supabase inquiries insert error:', supaErr.message);
+            }
+        }
+
+        res.json({ success: true, rep: rep.name, phone: rep.phone });
+    } catch (e) {
+        console.error('website-lead endpoint error:', e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 app.post('/webhook', async (req, res) => {
     try {
         const body = req.body;
