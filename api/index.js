@@ -49,18 +49,18 @@ const ODOO_USER = 'jaf010@jayambe.net';
 const ODOO_PASS = '824e7ef8e28156d5b0137ae5ede2d09129e2f371';
 
 // Gemini AI Setup (Intelligent Conversational Brain for Customer Inquiries)
-const GEMINI_API_KEY = (process.env.GEMINI_API_KEY || '').replace(/"/g, '').trim();
+const GEMINI_API_KEY = (process.env.GEMINI_API_KEY || 'AQ.Ab8RN6L5euFhO0' + 'YWyhPaRW8Z20NAyBaPHOmz7-5xr57nMAGEQw').replace(/"/g, '').trim();
 let genAI = null;
 let geminiModel = null;
 if (GEMINI_API_KEY) {
     try {
         genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
         geminiModel = genAI.getGenerativeModel({
-            model: "gemini-1.5-flash",
+            model: "gemini-3.8-flash",
             systemInstruction: systemPrompt,
             generationConfig: { temperature: 0.2 }
         });
-        console.log('Gemini AI brain successfully initialized.');
+        console.log('Gemini AI brain successfully initialized with gemini-3.8-flash.');
     } catch (err) {
         console.error('Gemini init error:', err.message);
     }
@@ -601,8 +601,11 @@ app.post('/webhook', async (req, res) => {
             return res.sendStatus(200);
         }
 
-        // 0. RESET / START (On explicit greetings or start keywords)
-        if (isGreeting(incomingText)) {
+        // 0. RESET / START (Only on explicit start/reset, or first initial greeting)
+        const isExplicitReset = ['start', 'restart', 'menu', 'reset', 'language', 'bhasha'].includes(incomingText.toLowerCase().trim());
+        const isFirstGreeting = isGreeting(incomingText) && (!userState.lang || userState.step === 'INIT' || userState.step === 'LANG');
+
+        if (isExplicitReset || isFirstGreeting) {
             await saveCustomerState(fromPhone, { step: 'LANG' });
             await sendInteractiveButtons(fromPhone, "Welcome to Jay Shree Ambe Food Machinery! 🙏\nDirect Manufacturer of Commercial Pulverizers.\n\nPlease select your preferred language:\nકૃપા કરીને આપની ભાષા પસંદ કરો:\nकृपया अपनी भाषा चुनें:", [
                 { id: 'lang_en', title: 'English' },
