@@ -28,7 +28,7 @@ const part2 = "OUZCsVIHCunjW0naySH2qMIGo5ZAHreyXK7BW0PR";
 const part3 = "1lZAkWZCWR8AjwyFLa3fXM3RTUUTSkFGZCytpSYtGaMd5YLRSKW6J3WCCHRQBrDkZCB4toQwyJjB3LoJZC16aPpH4Y4DIXwZC26s0SGvhmIZBjpFTZB6AZDZD";
 
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN || (part1 + part2 + part3);
-const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID || '1272560265946003';
+let PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID || '1260228570511181';
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || 'jayambebot2024';
 
 // Supabase Setup
@@ -511,6 +511,11 @@ app.post('/webhook', async (req, res) => {
         const body = req.body;
         if (!body.object || !body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]) {
             return res.sendStatus(200);
+        }
+
+        const incomingPhoneId = body.entry?.[0]?.changes?.[0]?.value?.metadata?.phone_number_id;
+        if (incomingPhoneId) {
+            PHONE_NUMBER_ID = incomingPhoneId;
         }
 
         const messageObj = body.entry[0].changes[0].value.messages[0];
