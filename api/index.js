@@ -286,18 +286,20 @@ function isGreeting(text) {
     const clean = text.toLowerCase().trim().replace(/[!.,?🙏\s]+/g, ' ');
     const greetingWords = [
         'hi', 'hello', 'hey', 'hii', 'hiii', 'helo', 'hellow',
+        'hy', 'hyy', 'hyyy', 'hlo', 'hlw', 'heyy', 'hiee', 'halo',
         'good morning', 'good afternoon', 'good evening', 'good night',
         'gm', 'ga', 'ge', 'gn',
         'namaste', 'namaskar', 'kem cho', 'kemcho', 'khemcho',
         'jay shree krishna', 'jai shree krishna', 'jsk',
         'jay ambe', 'jai ambe', 'jay mataji', 'jai mataji',
         'radhe radhe', 'ram ram', 'sitaram', 'shree ram',
-        'start', 'restart', 'menu', 'help', 'info'
+        'start', 'restart', 'menu', 'help', 'info', 'yo', 'ola'
     ];
     if (greetingWords.includes(clean.trim())) return true;
     for (const g of greetingWords) {
         if (clean.startsWith(g + ' ') || clean.endsWith(' ' + g)) return true;
     }
+    if (clean.trim().length <= 2) return true;
     return false;
 }
 
@@ -519,6 +521,19 @@ function getNextRepFromOdoo() {
     });
 }
 
+// Helper: Assign Permanent Salesperson to Customer Phone (Consistent & Deterministic)
+// This guarantees that ANY message from this phone number ALWAYS connects to the exact same salesperson!
+function getDeterministicRepForPhone(phone) {
+    if (!phone) return SALES_TEAM[0];
+    const cleanDigits = String(phone).replace(/[^0-9]/g, '');
+    let hash = 0;
+    for (let i = 0; i < cleanDigits.length; i++) {
+        hash = (hash * 31 + cleanDigits.charCodeAt(i)) >>> 0;
+    }
+    const index = hash % SALES_TEAM.length;
+    return SALES_TEAM[index];
+}
+
 // Helper: Restore Customer Session from Memory, Odoo CRM, or Supabase
 async function getCustomerState(phone) {
     if (!phone) return { lang: 'en', step: 'INIT' };
@@ -568,20 +583,21 @@ async function getCustomerState(phone) {
         } catch (e) {}
     }
 
-    // 3. For BRAND NEW customer: Assign next salesperson directly from Odoo CRM round-robin!
-    const nextRep = await getNextRepFromOdoo();
+    // 3. For BRAND NEW customer: Deterministically assign permanent salesperson by Phone Number!
+    // This GUARANTEES the customer ALWAYS gets the exact same rep on message 1, message 2, and forever!
+    const rep = getDeterministicRepForPhone(phone);
     const newState = {
         lang: 'en',
         step: 'INIT',
-        assignedRep: nextRep.name,
-        assignedRepId: nextRep.id,
-        assignedRepGu: nextRep.gu,
-        assignedRepHi: nextRep.hi,
-        assignedRepEn: nextRep.en,
-        assignedRepPhone: nextRep.phone
+        assignedRep: rep.name,
+        assignedRepId: rep.id,
+        assignedRepGu: rep.gu,
+        assignedRepHi: rep.hi,
+        assignedRepEn: rep.en,
+        assignedRepPhone: rep.phone
     };
     global.customerState[phone] = newState;
-    console.log(`Assigned fresh round-robin rep for new customer ${phone}: ${nextRep.name}`);
+    console.log(`Assigned permanent rep for new customer ${phone}: ${rep.name}`);
     return newState;
 }
 
@@ -1284,35 +1300,17 @@ function syncLeadToOdoo(phone, leadData) {
     });
 }
 
-// Helper: Push lead to Supabase (inquiries + whatsapp_customers)
+// Helper: Push lead to Supabase (whatsapp_customers table ONLY - never website inquiries)
 async function syncLeadToSupabase(phone, leadData) {
     if (!supabase) return;
     try {
-        // 1. Sync to inquiries table (stores full product, city, and assigned salesperson for commission)
-        try {
-            const assignedName = leadData.assignedRep || 'Sales Team';
-            const fullLocation = [leadData.city, leadData.state].filter(Boolean).join(', ') || 'India';
-            const inqRecord = {
-                name: leadData.name || 'Valued Customer',
-                phone: phone,
-                city: fullLocation,
-                product: `${leadData.category || ''} | ${leadData.type || ''} | ${leadData.hp || ''}`.replace(/^[\s|]+|[\s|]+$/g, ''),
-                source: `whatsapp_bot - ${assignedName}`
-            };
-            await supabase.from('inquiries').insert([inqRecord]);
-            console.log('Successfully inserted lead into Supabase inquiries table for:', phone);
-        } catch (inqErr) {
-            console.error('Inquiries insert error:', inqErr.message);
-        }
-
-        // 2. Sync to whatsapp_customers table (phone, name, state, city, last_message)
+        // Sync to whatsapp_customers table (phone, name, state, last_message)
         try {
             const assignedName = leadData.assignedRep || 'Sales Team';
             await supabase.from('whatsapp_customers').upsert([{
                 phone: phone,
                 name: leadData.name ? `${leadData.name} [${assignedName}]` : null,
-                state: `${leadData.state || 'India'} (${leadData.hp || '20 HP'})`,
-                city: leadData.city ? `${leadData.city} [Rep: ${assignedName}]` : `[Rep: ${assignedName}]`,
+                state: `${leadData.city || ''}, ${leadData.state || 'India'} (${leadData.hp || '20 HP'})`,
                 last_message: new Date().toISOString()
             }], { onConflict: 'phone' });
             console.log('Successfully synced to Supabase whatsapp_customers for:', phone);
