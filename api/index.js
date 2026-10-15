@@ -34,9 +34,12 @@ let PHONE_NUMBER_ID = (process.env.PHONE_NUMBER_ID && process.env.PHONE_NUMBER_I
     : '1260228570511181';
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || 'jayambebot2024';
 
-// Supabase Setup
+// Supabase Setup (Service Role Key for Secure Server-Side Operations with RLS Active)
 const SUPABASE_URL = "https://uosqmchlfvvevvdmhozi.supabase.co";
-const SUPABASE_KEY = process.env.SUPABASE_KEY || "sb_publishable_iaEuQFJp99NoI5Gp00hHag_7MlsHkyK";
+const SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVvc3FtY2hsZnZ2ZXZ2ZG1ob3ppIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Njc0NzA1MiwiZXhwIjoyMTAyMzIzMDUyfQ.TapgthZQdJwY4PDSR8FzwZWcZqeifc2ecg6xy_2Pt_k";
+const SUPABASE_KEY = (process.env.SUPABASE_KEY && process.env.SUPABASE_KEY.includes('service_role'))
+    ? process.env.SUPABASE_KEY
+    : SERVICE_ROLE_KEY;
 let supabase = null;
 if (SUPABASE_URL && SUPABASE_KEY) {
     supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
