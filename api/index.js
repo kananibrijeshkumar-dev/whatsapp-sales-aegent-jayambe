@@ -512,9 +512,23 @@ app.get('/webhook', (req, res) => {
     }
 });
 
+global.lastWebhooks = global.lastWebhooks || [];
+
+app.get('/debug-logs', (req, res) => {
+    res.json({
+        total: global.lastWebhooks.length,
+        logs: global.lastWebhooks.slice(0, 10)
+    });
+});
+
 app.post('/webhook', async (req, res) => {
     try {
         const body = req.body;
+        global.lastWebhooks.unshift({
+            timestamp: new Date().toISOString(),
+            body: body
+        });
+        if (global.lastWebhooks.length > 50) global.lastWebhooks.pop();
         if (!body.object || !body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]) {
             return res.sendStatus(200);
         }
