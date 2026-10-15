@@ -28,7 +28,9 @@ const part2 = "OUZCsVIHCunjW0naySH2qMIGo5ZAHreyXK7BW0PR";
 const part3 = "1lZAkWZCWR8AjwyFLa3fXM3RTUUTSkFGZCytpSYtGaMd5YLRSKW6J3WCCHRQBrDkZCB4toQwyJjB3LoJZC16aPpH4Y4DIXwZC26s0SGvhmIZBjpFTZB6AZDZD";
 
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN || (part1 + part2 + part3);
-let PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID || '1260228570511181';
+let PHONE_NUMBER_ID = (process.env.PHONE_NUMBER_ID && process.env.PHONE_NUMBER_ID !== '1272560265946003')
+    ? process.env.PHONE_NUMBER_ID
+    : '1260228570511181';
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || 'jayambebot2024';
 
 // Supabase Setup
@@ -492,7 +494,11 @@ const processedMessages = new Set();
 global.customerState = global.customerState || {};
 
 app.get('/', (req, res) => {
-    res.send('Jay Shree Ambe Food Machinery WhatsApp Agent is active!');
+    res.json({
+        status: 'active',
+        phone_number_id: PHONE_NUMBER_ID,
+        verified_name: 'Jay Ambe Food Machinery'
+    });
 });
 
 app.get('/webhook', (req, res) => {
