@@ -599,18 +599,7 @@ async function sendLeadConfirmation(fromPhone, userState, lang) {
         `🏭 *जय श्री अम्बे फूड मशीनरी* 🏭\n✨ *३०+ वर्षों का अटूट विश्वास एवं अनुभव*\n━━━━━━━━━━━━━━━━━━━━\n✅ *आपकी पूछताछ सफलतापूर्वक दर्ज कर ली गई है!* 🙏\n\n📋 *पूछताछ विवरण:*\n• 👤 *ग्राहक नाम:* ${userState.name}\n• ⚙️ *मशीन:* ${userState.hp || '20 HP'} (${userState.type || 'कमर्शियल'})\n• 📍 *स्थान:* ${userState.city}, ${userState.state}\n\n💼 *आपके समर्पित सेल्स एग्जीक्यूटिव:*\n👤 *${repHi}*\n📞 *सीधा संपर्क:* ${repPhone}\n\nहमारी टीम जल्द ही सर्वोत्तम कोटेशन के साथ आपसे संपर्क करेगी।\n━━━━━━━━━━━━━━━━━━━━\n🌐 *आधिकारिक वेबसाइट:*\nhttps://jayambefoodmachinery.com\n\n🎥 *लाइव मशीन डेमो वीडियो:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/` :
         `🏭 *JAY SHREE AMBE FOOD MACHINERY* 🏭\n✨ *30+ Years of Manufacturing Excellence*\n━━━━━━━━━━━━━━━━━━━━\n✅ *Your inquiry has been successfully registered!* 🙏\n\n📋 *Inquiry Summary:*\n• 👤 *Customer Name:* ${userState.name}\n• ⚙️ *Machine:* ${userState.hp || '20 HP'} (${userState.type || 'Commercial'})\n• 📍 *Location:* ${userState.city}, ${userState.state}\n\n💼 *Your Dedicated Sales Executive:*\n👤 *${repEn}*\n📞 *Direct Contact:* ${repPhone}\n\nOur sales executive will contact you shortly with the best factory quotation.\n━━━━━━━━━━━━━━━━━━━━\n🌐 *Official Website:*\nhttps://jayambefoodmachinery.com\n\n🎥 *Live Machine Demo Videos:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/`;
 
-    const finalButtons = (lang === 'gu') ? [
-        { id: 'btn_video_gu', title: '🎥 વિડીયો જુઓ' },
-        { id: 'talk_sales_gu', title: '📞 સંપર્ક કરો' }
-    ] : (lang === 'hi') ? [
-        { id: 'btn_video_hi', title: '🎥 वीडियो देखें' },
-        { id: 'talk_sales_hi', title: '📞 संपर्क करें' }
-    ] : [
-        { id: 'btn_video_en', title: '🎥 Watch Videos' },
-        { id: 'talk_sales_en', title: '📞 Contact Sales' }
-    ];
-
-    await sendInteractiveButtons(fromPhone, thankMsg, finalButtons);
+    await sendWhatsAppText(fromPhone, thankMsg);
 }
 
 const processedMessages = new Set();
@@ -700,30 +689,18 @@ app.post('/webhook', async (req, res) => {
         // ABUSE FILTER: If customer sends abusive, vulgar, or insulting language
         if (isAbusive(incomingText)) {
             const lang = userState.lang || 'hi';
+            const rep = ensureAssignedRep(userState);
             const warningMsg = (lang === 'gu') ?
-                `⚠️ *કૃપા કરીને મર્યાદા જાળવો અને આદરપૂર્વક વાત કરો.* 🙏\n\nજય શ્રી અંબે ફૂડ મશીનરીમાં અમે તમામ ગ્રાહકોનું સન્માન કરીએ છીએ.\nજો આપને અમારી કોમર્શિયલ પલ્વરાઇઝર મશીનરી અથવા બિઝનેસ કવોટેશન વિશે માહિતી જોઈતી હોય, તો કૃપા કરીને યોગ્ય રીતે જણાવો. અમારી ટીમ આપને સંપૂર્ણ સહાય કરશે.` :
+                `⚠️ *કૃપા કરીને મર્યાદા જાળવો અને આદરપૂર્વક વાત કરો.* 🙏\n\nજય શ્રી અંબે ફૂડ મશીનરીમાં અમે તમામ ગ્રાહકોનું સન્માન કરીએ છીએ.\nજો આપને અમારી કોમર્શિયલ પલ્વરાઇઝર મશીનરી અથવા બિઝનેસ કવોટેશન વિશે માહિતી જોઈતી હોય, તો કૃપા કરીને યોગ્ય રીતે જણાવો.\n\n📞 *સંપર્ક / કૉલ:* ${rep.gu} (${rep.phone})` :
                 (lang === 'en') ?
-                `⚠️ *Please communicate respectfully and professionally.* 🙏\n\nAt Jay Shree Ambe Food Machinery, we respect all our clients.\nIf you are looking for commercial pulverizer machinery or business quotations, please chat respectfully and our team will be glad to assist you.` :
-                `⚠️ *कृपया मर्यादित और सम्मानजनक भाषा का प्रयोग करें।* 🙏\n\nजय श्री अम्बे फूड मशीनरी में हम सभी ग्राहकों का सम्मान करते हैं।\nयदि आपको हमारी कमर्शियल पल्वराइजर मशीनों अथवा बिजनेस कोटेशन के संबंध में कोई जानकारी चाहिए, तो कृपया सम्मानपूर्वक लिखें। हमारी टीम आपकी पूरी सहायता करेगी।`;
-
-            const warningButtons = (lang === 'gu') ? [
-                { id: 'btn_restart_gu', title: '📋 મશીન જુઓ' },
-                { id: 'talk_sales_gu', title: '📞 સંપર્ક કરો' }
-            ] : (lang === 'en') ? [
-                { id: 'btn_restart_en', title: '📋 View Machines' },
-                { id: 'talk_sales_en', title: '📞 Contact Sales' }
-            ] : [
-                { id: 'btn_restart_hi', title: '📋 मशीन देखें' },
-                { id: 'talk_sales_hi', title: '📞 संपर्क करें' }
-            ];
+                `⚠️ *Please communicate respectfully and professionally.* 🙏\n\nAt Jay Shree Ambe Food Machinery, we respect all our clients.\nIf you are looking for commercial pulverizer machinery or business quotations, please chat respectfully.\n\n📞 *Contact / Call:* ${rep.en} (${rep.phone})` :
+                `⚠️ *कृपया मर्यादित और सम्मानजनक भाषा का प्रयोग करें।* 🙏\n\nजय श्री अम्बे फूड मशीनरी में हम सभी ग्राहकों का सम्मान करते हैं।\nयदि आपको हमारी कमर्शियल पल्वराइजर मशीनों अथवा बिजनेस कोटेशन के संबंध में कोई जानकारी चाहिए, तो कृपया सम्मानपूर्वक लिखें।\n\n📞 *संपर्क / कॉल:* ${rep.hi} (${rep.phone})`;
 
             await sendWhatsAppText(fromPhone, warningMsg);
-            const promptTitle = (lang === 'gu') ? 'આગળ વધવા માટે વિકલ્પ પસંદ કરો:' : (lang === 'hi') ? 'आगे बढ़ने के लिए विकल्प चुनें:' : 'Please choose an option to proceed:';
-            await sendInteractiveButtons(fromPhone, promptTitle, warningButtons);
             return res.sendStatus(200);
         }
 
-        const isCompletedCustomer = (userState.step === 'COMPLETED' || !!userState.assignedRep);
+        const isCompletedCustomer = (userState.step === 'COMPLETED');
 
         // RETURNING CUSTOMER GREETINGS: If an existing customer greets (hi/hello/namaste/good afternoon/kem cho)
         if (isCompletedCustomer && isGreeting(incomingText)) {
@@ -732,31 +709,18 @@ app.post('/webhook', async (req, res) => {
             const customerName = userState.name ? ` ${userState.name}` : '';
 
             const welcomeBackMsg = (lang === 'gu') ?
-                `નમસ્તે${customerName}! 🙏\nજય શ્રી અંબે ફૂડ મશીનરીમાં આપનું ફરીથી સ્વાગત છે.\n\nઆપના ડેડિકેટેડ સેલ્સ એક્ઝિક્યુટિવ: *${rep.gu}* (📞 ${rep.phone}) છે.\n\nઅમારું AI મશીન બ્રેઇન અને સેલ્સ ટીમ આપની સંપૂર્ણ સહાય માટે હાજર છે. આપ કોઈપણ મશીન મોડેલ, ઉત્પાદન ક્ષમતા, કવોટેશન અથવા ટેકનિકલ વિગતો સીધી અહીં પૂછી શકો છો.` :
+                `નમસ્તે${customerName}! 🙏\nજય શ્રી અંબે ફૂડ મશીનરીમાં આપનું સ્વાગત છે.\n\nઆપના ડેડિકેટેડ સેલ્સ એક્ઝિક્યુટિવ: *${rep.gu}*\n📞 સીધો સંપર્ક / કૉલ: *${rep.phone}*\n\nમશીન, કવોટેશન અથવા કોઈપણ માહિતી માટે આપ અહીં સીધું પૂછી શકો છો અથવા *${rep.gu}* સાથે સીધો સંપર્ક કરી શકો છો.` :
                 (lang === 'en') ?
-                `Welcome back${customerName}! 🙏\nJay Shree Ambe Food Machinery.\n\nYour Dedicated Sales Executive is: *${rep.en}* (📞 ${rep.phone}).\n\nOur AI Assistant and Sales Team are here to help you. Feel free to ask any question about machine specs, production output, or quotations.` :
-                `नमस्ते${customerName}! 🙏\nजय श्री अम्बे फ़ूड मशीनरी में आपका फिर से स्वागत है।\n\nआपकी सहायता के लिए आपके समर्पित सेल्स एग्जीक्यूटिव: *${rep.hi}* (📞 ${rep.phone}) उपस्थित हैं।\n\nहमारा AI ब्रेन और सेल्स टीम आपकी सेवा में है। आप किसी भी कमर्शियल पल्वराइज़र, क्षमता अथवा कोटेशन के बारे में यहाँ सीधे पूछ सकते हैं।`;
-
-            const quickButtons = (lang === 'gu') ? [
-                { id: 'btn_restart_gu', title: '📋 મશીન જુઓ' },
-                { id: 'talk_sales_gu', title: '📞 સંપર્ક કરો' }
-            ] : (lang === 'en') ? [
-                { id: 'btn_restart_en', title: '📋 View Machines' },
-                { id: 'talk_sales_en', title: '📞 Contact Sales' }
-            ] : [
-                { id: 'btn_restart_hi', title: '📋 मशीन देखें' },
-                { id: 'talk_sales_hi', title: '📞 संपर्क करें' }
-            ];
+                `Welcome back${customerName}! 🙏\nJay Shree Ambe Food Machinery.\n\nYour Dedicated Sales Executive: *${rep.en}*\n📞 Direct Contact / Call: *${rep.phone}*\n\nFor machine details, quotations, or specifications, you can ask right here or contact *${rep.en}* directly.` :
+                `नमस्ते${customerName}! 🙏\nजय श्री अम्बे फ़ूड मशीनरी में आपका स्वागत है।\n\nआपके समर्पित सेल्स एग्जीक्यूटिव: *${rep.hi}*\n📞 सीधा संपर्क / कॉल: *${rep.phone}*\n\nमशीन, कोटेशन या किसी भी जानकारी के लिए आप यहाँ लिख सकते हैं अथवा सीधे *${rep.hi}* से बात कर सकते हैं।`;
 
             await sendWhatsAppText(fromPhone, welcomeBackMsg);
-            const promptTitle = (lang === 'gu') ? 'આગળ વધવા માટે વિકલ્પ પસંદ કરો:' : (lang === 'hi') ? 'आगे बढ़ने के लिए विकल्प चुनें:' : 'Select an option:';
-            await sendInteractiveButtons(fromPhone, promptTitle, quickButtons);
             return res.sendStatus(200);
         }
 
         // 0. RESET / START (ONLY FOR BRAND NEW CUSTOMERS or EXPLICIT RESET)
         const isExplicitReset = ['restart', 'reset', 'menu', 'bhasha', 'change language'].includes(incomingText.toLowerCase().trim());
-        const isFirstGreeting = isGreeting(incomingText) && (!userState.lang || userState.step === 'INIT' || userState.step === 'LANG') && !userState.assignedRep;
+        const isFirstGreeting = isGreeting(incomingText) && !isCompletedCustomer && (!userState.lang || userState.step === 'INIT' || userState.step === 'LANG');
 
         if (isExplicitReset || isFirstGreeting) {
             await saveCustomerState(fromPhone, { step: 'LANG' });
@@ -1076,31 +1040,13 @@ async function answerWithGemini(toPhone, incomingText, userState) {
                         (lang === 'hi') ? `📞 *${rep.hi}:* ${rep.phone}` :
                         `📞 *${rep.en}:* ${rep.phone}`;
 
-    const followUpButtons = (lang === 'gu') ? [
-        { id: 'btn_restart_gu', title: '📋 મશીન જુઓ' },
-        { id: 'talk_sales_gu', title: '📞 સંપર્ક કરો' }
-    ] : (lang === 'hi') ? [
-        { id: 'btn_restart_hi', title: '📋 मशीन देखें' },
-        { id: 'talk_sales_hi', title: '📞 संपर्क करें' }
-    ] : [
-        { id: 'btn_restart_en', title: '📋 View Machines' },
-        { id: 'talk_sales_en', title: '📞 Contact Sales' }
-    ];
-
-    const followUpPrompt = (lang === 'gu') ?
-        "મશીન પસંદ કરવા અથવા સેલ્સ એક્ઝિક્યુટિવ સાથે સીધી વાત કરવા નીચે આપેલ વિકલ્પ પસંદ કરો:" :
-        (lang === 'hi') ?
-        "मशीन चुनने अथवा सेल्स एग्जीक्यूटिव से सीधे संपर्क के लिए नीचे दिया गया विकल्प चुनें:" :
-        "Select an option below to browse machines or contact our sales executive:";
-
     if (!geminiModel) {
         const fallbackGuide = (lang === 'gu') ?
-            `કોઈપણ માહિતી અથવા કવોટેશન માટે આપ અમારા સેલ્સ એક્ઝિક્યુટિવ સાથે સીધો સંપર્ક કરી શકો છો:\n${contactLine}\n\nઅમારી ટીમ આપની સંપૂર્ણ સહાય કરશે.` :
+            `કોઈપણ માહિતી અથવા કવોટેશન માટે આપ અમારા ડેડિકેટેડ સેલ્સ એક્ઝિક્યુટિવ સાથે સીધો સંપર્ક કરી શકો છો:\n${contactLine}\n\nઅમારી ટીમ આપની સંપૂર્ણ સહાય કરશે.` :
             (lang === 'hi') ?
-            `किसी भी जानकारी या कोटेशन के लिए आप हमारे सेल्स एग्जीक्यूटिव से सीधे संपर्क कर सकते हैं:\n${contactLine}\n\nहमारी टीम आपकी पूरी सहायता करेगी।` :
-            `For any product inquiry or pricing, you can reach our Sales Executive directly:\n${contactLine}\n\nOur team will assist you immediately.`;
+            `किसी भी जानकारी या कोटेशन के लिए आप हमारे समर्पित सेल्स एग्जीक्यूटिव से सीधे संपर्क कर सकते हैं:\n${contactLine}\n\nहमारी टीम आपकी पूरी सहायता करेगी।` :
+            `For any product inquiry or pricing, you can reach our Dedicated Sales Executive directly:\n${contactLine}\n\nOur team will assist you immediately.`;
         await sendWhatsAppText(toPhone, fallbackGuide);
-        await sendInteractiveButtons(toPhone, followUpPrompt, followUpButtons);
         return;
     }
 
@@ -1120,20 +1066,23 @@ INSTRUCTIONS:
 5. Keep the reply short and readable (2 to 4 sentences maximum) for mobile WhatsApp.`;
 
         const result = await geminiModel.generateContent(prompt);
-        const aiReply = result.response.text().trim();
+        let aiReply = result.response.text().trim();
 
         if (aiReply) {
+            if (!aiReply.includes(rep.phone)) {
+                const repFooter = (lang === 'gu') ? `\n\n📞 સંપર્ક / કૉલ: *${rep.gu}* (${rep.phone})` :
+                                  (lang === 'en') ? `\n\n📞 Contact / Call: *${rep.en}* (${rep.phone})` :
+                                  `\n\n📞 संपर्क / कॉल: *${rep.hi}* (${rep.phone})`;
+                aiReply += repFooter;
+            }
             await sendWhatsAppText(toPhone, aiReply);
         }
-
-        await sendInteractiveButtons(toPhone, followUpPrompt, followUpButtons);
     } catch (err) {
         console.error('Gemini error:', err.message);
         const fallbackGuide = (lang === 'gu') ?
-            `કોઈપણ માહિતી અથવા કવોટેશન માટે આપ અમારા સેલ્સ એક્ઝિક્યુટિવ સાથે સીધો સંપર્ક કરી શકો છો:\n${contactLine}\n\nઅમારી ટીમ આપની સંપૂર્ણ સહાય કરશે.` :
-            `किसी भी जानकारी या कोटेशन के लिए आप हमारे सेल्स एग्जीक्यूटिव से सीधे संपर्क कर सकते हैं:\n${contactLine}\n\nहमारी टीम आपकी पूरी सहायता करेगी।`;
+            `કોઈપણ માહિતી અથવા કવોટેશન માટે આપ અમારા ડેડિકેટેડ સેલ્સ એક્ઝિક્યુટિવ સાથે સીધો સંપર્ક કરી શકો છો:\n${contactLine}\n\nઅમારી ટીમ આપની સંપૂર્ણ સહાય કરશે.` :
+            `किसी भी जानकारी या कोटेशन के लिए आप हमारे समर्पित सेल्स एग्जीक्यूटिव से सीधे संपर्क कर सकते हैं:\n${contactLine}\n\nहमारी टीम आपकी पूरी सहायता करेगी।`;
         await sendWhatsAppText(toPhone, fallbackGuide);
-        await sendInteractiveButtons(toPhone, followUpPrompt, followUpButtons);
     }
 }
 
