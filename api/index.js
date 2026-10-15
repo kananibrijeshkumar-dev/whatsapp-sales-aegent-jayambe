@@ -79,17 +79,15 @@ const SALES_TEAM = [
     { id: 8, name: 'Siya', phone: '+91 97239 28746', gu: 'સિયાબેન', hi: 'सिया जी', en: 'Ms. Siya' }
 ];
 
-let roundRobinCounter = Math.floor(Math.random() * SALES_TEAM.length);
 function ensureAssignedRep(userState) {
     if (!userState.assignedRep || !userState.assignedRepPhone) {
-        const rep = SALES_TEAM[roundRobinCounter % SALES_TEAM.length];
-        roundRobinCounter = (roundRobinCounter + 1) % SALES_TEAM.length;
-        userState.assignedRep = rep.name;
-        userState.assignedRepId = rep.id;
-        userState.assignedRepGu = rep.gu;
-        userState.assignedRepHi = rep.hi;
-        userState.assignedRepEn = rep.en;
-        userState.assignedRepPhone = rep.phone;
+        const fallback = SALES_TEAM[0];
+        userState.assignedRep = fallback.name;
+        userState.assignedRepId = fallback.id;
+        userState.assignedRepGu = fallback.gu;
+        userState.assignedRepHi = fallback.hi;
+        userState.assignedRepEn = fallback.en;
+        userState.assignedRepPhone = fallback.phone;
     }
     const matched = SALES_TEAM.find(m => m.name.toLowerCase() === (userState.assignedRep || '').toLowerCase());
     return {
@@ -487,6 +485,40 @@ function lookupCustomerInOdoo(phone) {
     });
 }
 
+// Helper: Get next round-robin salesperson directly based on Odoo CRM history
+function getNextRepFromOdoo() {
+    return new Promise((resolve) => {
+        try {
+            const common = xmlrpc.createSecureClient({ host: 'v1.viducrm.com', port: 443, path: '/xmlrpc/2/common' });
+            common.methodCall('authenticate', [ODOO_DB, ODOO_USER, ODOO_PASS, {}], (err, uid) => {
+                if (err || !uid) {
+                    const fallbackIdx = Math.floor(Date.now() / 1000) % SALES_TEAM.length;
+                    return resolve(SALES_TEAM[fallbackIdx]);
+                }
+                const models = xmlrpc.createSecureClient({ host: 'v1.viducrm.com', port: 443, path: '/xmlrpc/2/object' });
+                models.methodCall('execute_kw', [ODOO_DB, uid, ODOO_PASS, 'crm.lead', 'search_read', [[]], {
+                    fields: ['id', 'user_id'],
+                    limit: 1,
+                    order: 'id desc'
+                }], (searchErr, lastLeads) => {
+                    if (!searchErr && Array.isArray(lastLeads) && lastLeads.length > 0 && lastLeads[0].user_id) {
+                        const lastUserId = Array.isArray(lastLeads[0].user_id) ? lastLeads[0].user_id[0] : lastLeads[0].user_id;
+                        const lastIndex = SALES_TEAM.findIndex(m => m.id === lastUserId);
+                        const nextIndex = (lastIndex !== -1) ? (lastIndex + 1) % SALES_TEAM.length : 0;
+                        console.log(`Odoo round-robin: Last rep was ID ${lastUserId} (Index ${lastIndex}), Next rep is ${SALES_TEAM[nextIndex].name} (Index ${nextIndex})`);
+                        return resolve(SALES_TEAM[nextIndex]);
+                    }
+                    const fallbackIdx = Math.floor(Date.now() / 1000) % SALES_TEAM.length;
+                    resolve(SALES_TEAM[fallbackIdx]);
+                });
+            });
+        } catch (e) {
+            const fallbackIdx = Math.floor(Date.now() / 1000) % SALES_TEAM.length;
+            resolve(SALES_TEAM[fallbackIdx]);
+        }
+    });
+}
+
 // Helper: Restore Customer Session from Memory, Odoo CRM, or Supabase
 async function getCustomerState(phone) {
     if (!phone) return { lang: 'en', step: 'INIT' };
@@ -535,7 +567,22 @@ async function getCustomerState(phone) {
             }
         } catch (e) {}
     }
-    return { lang: 'en', step: 'INIT' };
+
+    // 3. For BRAND NEW customer: Assign next salesperson directly from Odoo CRM round-robin!
+    const nextRep = await getNextRepFromOdoo();
+    const newState = {
+        lang: 'en',
+        step: 'INIT',
+        assignedRep: nextRep.name,
+        assignedRepId: nextRep.id,
+        assignedRepGu: nextRep.gu,
+        assignedRepHi: nextRep.hi,
+        assignedRepEn: nextRep.en,
+        assignedRepPhone: nextRep.phone
+    };
+    global.customerState[phone] = newState;
+    console.log(`Assigned fresh round-robin rep for new customer ${phone}: ${nextRep.name}`);
+    return newState;
 }
 
 // Helper: Send Full Lead Confirmation & Sales Hand-off
