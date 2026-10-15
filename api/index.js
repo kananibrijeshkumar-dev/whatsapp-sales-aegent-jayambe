@@ -85,17 +85,20 @@ function ensureAssignedRep(userState) {
         const rep = SALES_TEAM[roundRobinCounter % SALES_TEAM.length];
         roundRobinCounter = (roundRobinCounter + 1) % SALES_TEAM.length;
         userState.assignedRep = rep.name;
+        userState.assignedRepId = rep.id;
         userState.assignedRepGu = rep.gu;
         userState.assignedRepHi = rep.hi;
         userState.assignedRepEn = rep.en;
         userState.assignedRepPhone = rep.phone;
     }
+    const matched = SALES_TEAM.find(m => m.name.toLowerCase() === (userState.assignedRep || '').toLowerCase());
     return {
+        id: userState.assignedRepId || matched?.id || 6,
         name: userState.assignedRep,
-        gu: userState.assignedRepGu || userState.assignedRep,
-        hi: userState.assignedRepHi || userState.assignedRep,
-        en: userState.assignedRepEn || userState.assignedRep,
-        phone: userState.assignedRepPhone
+        gu: userState.assignedRepGu || matched?.gu || userState.assignedRep,
+        hi: userState.assignedRepHi || matched?.hi || userState.assignedRep,
+        en: userState.assignedRepEn || matched?.en || userState.assignedRep,
+        phone: userState.assignedRepPhone || matched?.phone
     };
 }
 
@@ -439,12 +442,84 @@ async function saveCustomerState(phone, state) {
     }
 }
 
-// Helper: Restore Customer Session from Memory or Supabase
+// Helper: Lookup Customer in Odoo CRM (Permanent 1-Customer to 1-Salesperson Mapping)
+function lookupCustomerInOdoo(phone) {
+    return new Promise((resolve) => {
+        if (!phone) return resolve(null);
+        const cleanPhone = phone.replace(/[^0-9]/g, '');
+        const plainPhone = cleanPhone.length > 10 ? cleanPhone.slice(-10) : cleanPhone;
+        try {
+            const common = xmlrpc.createSecureClient({ host: 'v1.viducrm.com', port: 443, path: '/xmlrpc/2/common' });
+            common.methodCall('authenticate', [ODOO_DB, ODOO_USER, ODOO_PASS, {}], (err, uid) => {
+                if (err || !uid) return resolve(null);
+                const models = xmlrpc.createSecureClient({ host: 'v1.viducrm.com', port: 443, path: '/xmlrpc/2/object' });
+                const domain = [
+                    '|',
+                    ['phone', 'ilike', plainPhone],
+                    ['mobile', 'ilike', plainPhone]
+                ];
+                models.methodCall('execute_kw', [ODOO_DB, uid, ODOO_PASS, 'crm.lead', 'search_read', [domain], {
+                    fields: ['id', 'name', 'contact_name', 'user_id', 'phone', 'mobile', 'city'],
+                    limit: 1,
+                    order: 'id desc'
+                }], (searchErr, leads) => {
+                    if (searchErr || !Array.isArray(leads) || leads.length === 0) {
+                        return resolve(null);
+                    }
+                    const lead = leads[0];
+                    let matchedRep = null;
+                    if (lead.user_id) {
+                        const repId = Array.isArray(lead.user_id) ? lead.user_id[0] : lead.user_id;
+                        matchedRep = SALES_TEAM.find(m => m.id === repId);
+                    }
+                    const parsedName = lead.contact_name || (lead.name?.replace(/^WhatsApp Lead:\s*/i, '').split('-')[0]?.trim()) || 'Valued Customer';
+                    resolve({
+                        leadId: lead.id,
+                        name: (parsedName.toLowerCase() === 'customer' || parsedName.toLowerCase() === 'valued customer') ? '' : parsedName,
+                        city: lead.city || '',
+                        rep: matchedRep
+                    });
+                });
+            });
+        } catch (e) {
+            resolve(null);
+        }
+    });
+}
+
+// Helper: Restore Customer Session from Memory, Odoo CRM, or Supabase
 async function getCustomerState(phone) {
     if (!phone) return { lang: 'en', step: 'INIT' };
     if (global.customerState[phone]) {
         return global.customerState[phone];
     }
+
+    // 1. Primary Source of Truth: Check Odoo CRM for Permanent Salesperson Binding!
+    try {
+        const odooCustomer = await lookupCustomerInOdoo(phone);
+        if (odooCustomer && odooCustomer.rep) {
+            const restoredState = {
+                step: 'COMPLETED',
+                lang: 'hi',
+                name: odooCustomer.name || '',
+                city: odooCustomer.city || '',
+                leadId: odooCustomer.leadId,
+                assignedRep: odooCustomer.rep.name,
+                assignedRepId: odooCustomer.rep.id,
+                assignedRepGu: odooCustomer.rep.gu,
+                assignedRepHi: odooCustomer.rep.hi,
+                assignedRepEn: odooCustomer.rep.en,
+                assignedRepPhone: odooCustomer.rep.phone
+            };
+            global.customerState[phone] = restoredState;
+            console.log(`Restored permanent Odoo CRM rep for ${phone}: ${odooCustomer.rep.name}`);
+            return restoredState;
+        }
+    } catch (e) {
+        console.error('Odoo lookup error in getCustomerState:', e.message);
+    }
+
+    // 2. Secondary check: Supabase customer session
     if (supabase) {
         try {
             const { data } = await supabase
@@ -601,9 +676,40 @@ app.post('/webhook', async (req, res) => {
             return res.sendStatus(200);
         }
 
-        // 0. RESET / START (Only on explicit start/reset, or first initial greeting)
-        const isExplicitReset = ['start', 'restart', 'menu', 'reset', 'language', 'bhasha'].includes(incomingText.toLowerCase().trim());
-        const isFirstGreeting = isGreeting(incomingText) && (!userState.lang || userState.step === 'INIT' || userState.step === 'LANG');
+        const isCompletedCustomer = (userState.step === 'COMPLETED' || !!userState.assignedRep);
+
+        // RETURNING CUSTOMER GREETINGS: If an existing customer greets (hi/hello/namaste/good afternoon/kem cho)
+        if (isCompletedCustomer && isGreeting(incomingText)) {
+            const rep = ensureAssignedRep(userState);
+            const lang = userState.lang || 'hi';
+            const customerName = userState.name ? ` ${userState.name}` : '';
+
+            const welcomeBackMsg = (lang === 'gu') ?
+                `નમસ્તે${customerName}! 🙏\nજય શ્રી અંબે ફૂડ મશીનરીમાં આપનું ફરીથી સ્વાગત છે.\n\nઆપના ડેડિકેટેડ સેલ્સ એક્ઝિક્યુટિવ: *${rep.gu}* (📞 ${rep.phone}) છે.\n\nઅમારું AI મશીન બ્રેઇન અને સેલ્સ ટીમ આપની સંપૂર્ણ સહાય માટે હાજર છે. આપ કોઈપણ મશીન મોડેલ, ઉત્પાદન ક્ષમતા, કવોટેશન અથવા ટેકનિકલ વિગતો સીધી અહીં પૂછી શકો છો.` :
+                (lang === 'en') ?
+                `Welcome back${customerName}! 🙏\nJay Shree Ambe Food Machinery.\n\nYour Dedicated Sales Executive is: *${rep.en}* (📞 ${rep.phone}).\n\nOur AI Assistant and Sales Team are here to help you. Feel free to ask any question about machine specs, production output, or quotations.` :
+                `नमस्ते${customerName}! 🙏\nजय श्री अम्बे फ़ूड मशीनरी में आपका फिर से स्वागत है।\n\nआपकी सहायता के लिए आपके समर्पित सेल्स एग्जीक्यूटिव: *${rep.hi}* (📞 ${rep.phone}) उपस्थित हैं।\n\nहमारा AI ब्रेन और सेल्स टीम आपकी सेवा में है। आप किसी भी कमर्शियल पल्वराइज़र, क्षमता अथवा कोटेशन के बारे में यहाँ सीधे पूछ सकते हैं।`;
+
+            const quickButtons = (lang === 'gu') ? [
+                { id: 'btn_restart_gu', title: '📋 મશીન જુઓ' },
+                { id: 'talk_sales_gu', title: '📞 સંપર્ક કરો' }
+            ] : (lang === 'en') ? [
+                { id: 'btn_restart_en', title: '📋 View Machines' },
+                { id: 'talk_sales_en', title: '📞 Contact Sales' }
+            ] : [
+                { id: 'btn_restart_hi', title: '📋 मशीन देखें' },
+                { id: 'talk_sales_hi', title: '📞 संपर्क करें' }
+            ];
+
+            await sendWhatsAppText(fromPhone, welcomeBackMsg);
+            const promptTitle = (lang === 'gu') ? 'આગળ વધવા માટે વિકલ્પ પસંદ કરો:' : (lang === 'hi') ? 'आगे बढ़ने के लिए विकल्प चुनें:' : 'Select an option:';
+            await sendInteractiveButtons(fromPhone, promptTitle, quickButtons);
+            return res.sendStatus(200);
+        }
+
+        // 0. RESET / START (ONLY FOR BRAND NEW CUSTOMERS or EXPLICIT RESET)
+        const isExplicitReset = ['restart', 'reset', 'menu', 'bhasha', 'change language'].includes(incomingText.toLowerCase().trim());
+        const isFirstGreeting = isGreeting(incomingText) && (!userState.lang || userState.step === 'INIT' || userState.step === 'LANG') && !userState.assignedRep;
 
         if (isExplicitReset || isFirstGreeting) {
             await saveCustomerState(fromPhone, { step: 'LANG' });
@@ -1087,7 +1193,41 @@ function syncLeadToOdoo(phone, leadData) {
 
                 const models = xmlrpc.createSecureClient({ host: 'v1.viducrm.com', port: 443, path: '/xmlrpc/2/object' });
 
-                // Step 1: Query the last lead from Odoo CRM to determine the next salesperson in round-robin sequence
+                // If customer ALREADY has an assigned salesperson, ALWAYS preserve them permanently!
+                let assignedRep = null;
+                if (leadData.assignedRep && leadData.assignedRepPhone) {
+                    assignedRep = SALES_TEAM.find(m => m.name.toLowerCase() === leadData.assignedRep.toLowerCase());
+                }
+
+                if (assignedRep) {
+                    leadData.assignedRep = assignedRep.name;
+                    leadData.assignedRepId = assignedRep.id;
+                    leadData.assignedRepGu = assignedRep.gu;
+                    leadData.assignedRepHi = assignedRep.hi;
+                    leadData.assignedRepEn = assignedRep.en;
+                    leadData.assignedRepPhone = assignedRep.phone;
+
+                    const leadRecord = {
+                        name: `WhatsApp Lead: ${leadData.name || 'Customer'} - ${leadData.hp || '20 HP'} (${leadData.typeEn || leadData.type || 'Commercial'})`,
+                        contact_name: leadData.name || 'Customer',
+                        mobile: phone,
+                        phone: phone,
+                        city: leadData.city || '',
+                        user_id: assignedRep.id,
+                        description: `Assigned Sales Executive: ${assignedRep.name} (${assignedRep.phone})\nCategory: ${leadData.categoryEn || leadData.category || ''}\nType: ${leadData.typeEn || leadData.type || ''}\nCapacity: ${leadData.hp || ''}\nState: ${leadData.state || ''}\nLanguage: ${leadData.lang || ''}\nSource: WhatsApp AI Interactive Agent`
+                    };
+
+                    models.methodCall('execute_kw', [ODOO_DB, uid, ODOO_PASS, 'crm.lead', 'create', [leadRecord]], (leadErr, leadId) => {
+                        if (!leadErr) {
+                            leadData.leadId = leadId;
+                            console.log(`Successfully logged Odoo lead ID: ${leadId} under PERMANENT rep: ${assignedRep.name}`);
+                        }
+                        resolve(true);
+                    });
+                    return;
+                }
+
+                // Step 1: For BRAND NEW customers, Query the last lead from Odoo CRM to determine next salesperson in round-robin sequence
                 models.methodCall('execute_kw', [ODOO_DB, uid, ODOO_PASS, 'crm.lead', 'search_read', [[]], {
                     fields: ['id', 'user_id'],
                     limit: 1,
@@ -1108,6 +1248,7 @@ function syncLeadToOdoo(phone, leadData) {
 
                     const assignedRep = SALES_TEAM[nextIndex];
                     leadData.assignedRep = assignedRep.name;
+                    leadData.assignedRepId = assignedRep.id;
                     leadData.assignedRepGu = assignedRep.gu;
                     leadData.assignedRepHi = assignedRep.hi;
                     leadData.assignedRepEn = assignedRep.en;
