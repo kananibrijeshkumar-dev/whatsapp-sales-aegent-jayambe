@@ -283,9 +283,23 @@ function isAbusive(text) {
     return badPatterns.some(pattern => pattern.test(clean));
 }
 
+// Helper: Check if incoming text is a simple acknowledgement / thanks (ok, thanks, thank you, etc.)
+function isAcknowledgement(text) {
+    if (!text || typeof text !== 'string') return false;
+    const clean = text.toLowerCase().trim().replace(/[!.,?🙏👍😊\s]+/g, ' ').trim();
+    const ackWords = [
+        'ok', 'okk', 'okay', 'okey', 'k', 'kk', 'thanks', 'thank you', 'thankyou', 'thanx', 'thx', 'tnx', 'ty',
+        'fine', 'done', 'sure', 'got it', 'noted', 'alright', 'all right', 'great', 'nice', 'good', 'cool',
+        'dhanyavad', 'dhanyawad', 'shukriya', 'aabhar', 'abhar', 'thik hai', 'theek hai', 'thik', 'theek', 'sari vat', 'bhale',
+        'ઓકે', 'ઠીક છે', 'આભાર', 'ધન્યવાદ', 'थैंक्स', 'थैंक यू', 'ओके', 'ठीक है', 'धन्यवाद', 'शुक्रिया', 'आभार'
+    ];
+    return ackWords.includes(clean);
+}
+
 // Helper: Check if incoming text is a greeting or start command
 function isGreeting(text) {
     if (!text || typeof text !== 'string') return false;
+    if (isAcknowledgement(text)) return false;
     const clean = text.toLowerCase().trim().replace(/[!.,?🙏\s]+/g, ' ');
     const greetingWords = [
         'hi', 'hello', 'hey', 'hii', 'hiii', 'helo', 'hellow',
@@ -423,6 +437,21 @@ function parseNameAndLocation(inputStr, defaultLang = 'en') {
 // Helper: Persist Customer Session to Memory & Supabase
 async function saveCustomerState(phone, state) {
     if (!phone) return;
+    // PERMANENT REP GUARANTEE: never lose the assigned salesperson when state is saved/reset.
+    // Priority: rep already on this state -> rep already in memory -> deterministic rep by phone number.
+    if (!state.assignedRep || !state.assignedRepPhone) {
+        const prev = global.customerState[phone];
+        const src = (prev && prev.assignedRep && prev.assignedRepPhone) ? {
+            name: prev.assignedRep, id: prev.assignedRepId, gu: prev.assignedRepGu,
+            hi: prev.assignedRepHi, en: prev.assignedRepEn, phone: prev.assignedRepPhone
+        } : getDeterministicRepForPhone(phone);
+        state.assignedRep = src.name;
+        state.assignedRepId = src.id;
+        state.assignedRepGu = src.gu;
+        state.assignedRepHi = src.hi;
+        state.assignedRepEn = src.en;
+        state.assignedRepPhone = src.phone;
+    }
     global.customerState[phone] = state;
     if (supabase) {
         try {
@@ -580,6 +609,15 @@ async function getCustomerState(phone) {
                 .limit(1);
             if (data && data.length > 0 && data[0].state && data[0].state.startsWith('SESSION:')) {
                 const restored = JSON.parse(data[0].state.replace('SESSION:', ''));
+                if (!restored.assignedRep || !restored.assignedRepPhone) {
+                    const dRep = getDeterministicRepForPhone(phone);
+                    restored.assignedRep = dRep.name;
+                    restored.assignedRepId = dRep.id;
+                    restored.assignedRepGu = dRep.gu;
+                    restored.assignedRepHi = dRep.hi;
+                    restored.assignedRepEn = dRep.en;
+                    restored.assignedRepPhone = dRep.phone;
+                }
                 global.customerState[phone] = restored;
                 return restored;
             }
@@ -613,10 +651,10 @@ async function sendLeadConfirmation(fromPhone, userState, lang) {
     const repPhone = rep.phone;
 
     const thankMsg = (lang === 'gu') ?
-        `🏭 *જય શ્રી અંબે ફૂડ મશીનરી* 🏭\n✨ *૩૦+ વર્ષનો ઉત્પાદન અનુભવ*\n━━━━━━━━━━━━━━━━━━━━\n✅ *આપની પૂછપરછ સફળતાપૂર્વક નોંધાઈ ગઈ છે!* 🙏\n\n📋 *પૂછપરછ વિગતો:*\n• 👤 *ગ્રાહક નામ:* ${userState.name}\n• ⚙️ *મશીન:* ${userState.hp || '20 HP'} (${userState.type || 'કોમર્શિયલ'})\n• 📍 *સ્થળ:* ${userState.city}, ${userState.state}\n\n💼 *આપના ડેડિકેટેડ સેલ્સ એક્ઝિક્યુટિવ:*\n👤 *${repGu}*\n📞 *સીધો સંપર્ક:* ${repPhone}\n\nઅમારી ટીમ ટૂંક સમયમાં બેસ્ટ કવોટેશન સાથે આપનો સંપર્ક કરશે.\n━━━━━━━━━━━━━━━━━━━━\n🌐 *સત્તાવાર વેબસાઇટ:*\nhttps://jayambefoodmachinery.com\n\n🎥 *લાઈવ મશીન ડેમો વિડીયો:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/` :
+        `🏭 *જય શ્રી અંબે ફૂડ મશીનરી* 🏭\n✨ *૩૦+ વર્ષનો ઉત્પાદન અનુભવ*\n━━━━━━━━━━━━━━━━━━━━\n✅ *આપની પૂછપરછ સફળતાપૂર્વક નોંધાઈ ગઈ છે!* 🙏\n\n📋 *પૂછપરછ વિગતો:*\n• 👤 *ગ્રાહક નામ:* ${userState.name}\n• ⚙️ *મશીન:* ${userState.hp || '20 HP'} (${userState.type || 'કોમર્શિયલ'})\n• 📍 *સ્થળ:* ${userState.city}, ${userState.state}\n\n💼 *આપના ડેડિકેટેડ સેલ્સ એક્ઝિક્યુટિવ:*\n👤 *${repGu}*\n📞 *કૉલ / WhatsApp:* ${repPhone}\n⏰ *કૉલ કરવાનો સમય:* સવારે 9:00 થી સાંજે 7:00 વાગ્યા સુધી\n\nઅમારી ટીમ ટૂંક સમયમાં બેસ્ટ કવોટેશન સાથે આપનો સંપર્ક કરશે.\n━━━━━━━━━━━━━━━━━━━━\n🌐 *સત્તાવાર વેબસાઇટ:*\nhttps://jayambefoodmachinery.com\n\n🎥 *લાઈવ મશીન ડેમો વિડીયો:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/` :
         (lang === 'hi') ?
-        `🏭 *जय श्री अम्बे फूड मशीनरी* 🏭\n✨ *३०+ वर्षों का अटूट विश्वास एवं अनुभव*\n━━━━━━━━━━━━━━━━━━━━\n✅ *आपकी पूछताछ सफलतापूर्वक दर्ज कर ली गई है!* 🙏\n\n📋 *पूछताछ विवरण:*\n• 👤 *ग्राहक नाम:* ${userState.name}\n• ⚙️ *मशीन:* ${userState.hp || '20 HP'} (${userState.type || 'कमर्शियल'})\n• 📍 *स्थान:* ${userState.city}, ${userState.state}\n\n💼 *आपके समर्पित सेल्स एग्जीक्यूटिव:*\n👤 *${repHi}*\n📞 *सीधा संपर्क:* ${repPhone}\n\nहमारी टीम जल्द ही सर्वोत्तम कोटेशन के साथ आपसे संपर्क करेगी।\n━━━━━━━━━━━━━━━━━━━━\n🌐 *आधिकारिक वेबसाइट:*\nhttps://jayambefoodmachinery.com\n\n🎥 *लाइव मशीन डेमो वीडियो:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/` :
-        `🏭 *JAY SHREE AMBE FOOD MACHINERY* 🏭\n✨ *30+ Years of Manufacturing Excellence*\n━━━━━━━━━━━━━━━━━━━━\n✅ *Your inquiry has been successfully registered!* 🙏\n\n📋 *Inquiry Summary:*\n• 👤 *Customer Name:* ${userState.name}\n• ⚙️ *Machine:* ${userState.hp || '20 HP'} (${userState.type || 'Commercial'})\n• 📍 *Location:* ${userState.city}, ${userState.state}\n\n💼 *Your Dedicated Sales Executive:*\n👤 *${repEn}*\n📞 *Direct Contact:* ${repPhone}\n\nOur sales executive will contact you shortly with the best factory quotation.\n━━━━━━━━━━━━━━━━━━━━\n🌐 *Official Website:*\nhttps://jayambefoodmachinery.com\n\n🎥 *Live Machine Demo Videos:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/`;
+        `🏭 *जय श्री अम्बे फूड मशीनरी* 🏭\n✨ *३०+ वर्षों का अटूट विश्वास एवं अनुभव*\n━━━━━━━━━━━━━━━━━━━━\n✅ *आपकी पूछताछ सफलतापूर्वक दर्ज कर ली गई है!* 🙏\n\n📋 *पूछताछ विवरण:*\n• 👤 *ग्राहक नाम:* ${userState.name}\n• ⚙️ *मशीन:* ${userState.hp || '20 HP'} (${userState.type || 'कमर्शियल'})\n• 📍 *स्थान:* ${userState.city}, ${userState.state}\n\n💼 *आपके समर्पित सेल्स एग्जीक्यूटिव:*\n👤 *${repHi}*\n📞 *कॉल / WhatsApp:* ${repPhone}\n⏰ *कॉल करने का समय:* सुबह 9:00 बजे से शाम 7:00 बजे तक\n\nहमारी टीम जल्द ही सर्वोत्तम कोटेशन के साथ आपसे संपर्क करेगी।\n━━━━━━━━━━━━━━━━━━━━\n🌐 *आधिकारिक वेबसाइट:*\nhttps://jayambefoodmachinery.com\n\n🎥 *लाइव मशीन डेमो वीडियो:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/` :
+        `🏭 *JAY SHREE AMBE FOOD MACHINERY* 🏭\n✨ *30+ Years of Manufacturing Excellence*\n━━━━━━━━━━━━━━━━━━━━\n✅ *Your inquiry has been successfully registered!* 🙏\n\n📋 *Inquiry Summary:*\n• 👤 *Customer Name:* ${userState.name}\n• ⚙️ *Machine:* ${userState.hp || '20 HP'} (${userState.type || 'Commercial'})\n• 📍 *Location:* ${userState.city}, ${userState.state}\n\n💼 *Your Dedicated Sales Executive:*\n👤 *${repEn}*\n📞 *Call / WhatsApp:* ${repPhone}\n⏰ *Calling Hours:* 9:00 AM to 7:00 PM\n\nOur sales executive will contact you shortly with the best factory quotation.\n━━━━━━━━━━━━━━━━━━━━\n🌐 *Official Website:*\nhttps://jayambefoodmachinery.com\n\n🎥 *Live Machine Demo Videos:*\n▶️ *YouTube:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook:* https://www.facebook.com/share/164cTgG9YZ/`;
 
     await sendWhatsAppText(fromPhone, thankMsg);
 }
@@ -775,16 +813,43 @@ app.post('/webhook', async (req, res) => {
             const lang = userState.lang || 'hi';
             const rep = ensureAssignedRep(userState);
             const warningMsg = (lang === 'gu') ?
-                `⚠️ *કૃપા કરીને મર્યાદા જાળવો અને આદરપૂર્વક વાત કરો.* 🙏\n\nજય શ્રી અંબે ફૂડ મશીનરીમાં અમે તમામ ગ્રાહકોનું સન્માન કરીએ છીએ.\nજો આપને અમારી કોમર્શિયલ પલ્વરાઇઝર મશીનરી અથવા બિઝનેસ કવોટેશન વિશે માહિતી જોઈતી હોય, તો કૃપા કરીને યોગ્ય રીતે જણાવો.\n\n📞 *સંપર્ક / કૉલ:* ${rep.gu} (${rep.phone})` :
+                `⚠️ *કૃપા કરીને મર્યાદા જાળવો અને આદરપૂર્વક વાત કરો.* 🙏\n\nજય શ્રી અંબે ફૂડ મશીનરીમાં અમે તમામ ગ્રાહકોનું સન્માન કરીએ છીએ.\nજો આપને અમારી કોમર્શિયલ પલ્વરાઇઝર મશીનરી અથવા બિઝનેસ કવોટેશન વિશે માહિતી જોઈતી હોય, તો કૃપા કરીને યોગ્ય રીતે જણાવો.\n\n👤 *સેલ્સ એક્ઝિક્યુટિવ:* ${rep.gu}\n📞 *કૉલ / WhatsApp:* ${rep.phone}\n⏰ *કૉલ સમય:* સવારે 9:00 થી સાંજે 7:00 વાગ્યા સુધી` :
                 (lang === 'en') ?
-                `⚠️ *Please communicate respectfully and professionally.* 🙏\n\nAt Jay Shree Ambe Food Machinery, we respect all our clients.\nIf you are looking for commercial pulverizer machinery or business quotations, please chat respectfully.\n\n📞 *Contact / Call:* ${rep.en} (${rep.phone})` :
-                `⚠️ *कृपया मर्यादित और सम्मानजनक भाषा का प्रयोग करें।* 🙏\n\nजय श्री अम्बे फूड मशीनरी में हम सभी ग्राहकों का सम्मान करते हैं।\nयदि आपको हमारी कमर्शियल पल्वराइजर मशीनों अथवा बिजनेस कोटेशन के संबंध में कोई जानकारी चाहिए, तो कृपया सम्मानपूर्वक लिखें।\n\n📞 *संपर्क / कॉल:* ${rep.hi} (${rep.phone})`;
+                `⚠️ *Please communicate respectfully and professionally.* 🙏\n\nAt Jay Shree Ambe Food Machinery, we respect all our clients.\nIf you are looking for commercial pulverizer machinery or business quotations, please chat respectfully.\n\n👤 *Sales Executive:* ${rep.en}\n📞 *Call / WhatsApp:* ${rep.phone}\n⏰ *Calling Hours:* 9:00 AM to 7:00 PM` :
+                `⚠️ *कृपया मर्यादित और सम्मानजनक भाषा का प्रयोग करें।* 🙏\n\nजय श्री अम्बे फूड मशीनरी में हम सभी ग्राहकों का सम्मान करते हैं।\nयदि आपको हमारी कमर्शियल पल्वराइजर मशीनों अथवा बिजनेस कोटेशन के संबंध में कोई जानकारी चाहिए, तो कृपया सम्मानपूर्वक लिखें।\n\n👤 *सेल्स एग्जीक्यूटिव:* ${rep.hi}\n📞 *कॉल / WhatsApp:* ${rep.phone}\n⏰ *कॉल समय:* सुबह 9:00 बजे से शाम 7:00 बजे तक`;
 
             await sendWhatsAppText(fromPhone, warningMsg);
             return res.sendStatus(200);
         }
 
         const isCompletedCustomer = (userState.step === 'COMPLETED');
+
+        // DOT / PUNCTUATION-ONLY MESSAGE (e.g. "." or "..."): send company introduction with the customer's permanent rep
+        if (messageObj.type === 'text' && /^[\s.,!?·•…\-_*#~]+$/.test(incomingText) && incomingText.trim().length > 0) {
+            const rep = ensureAssignedRep(userState);
+            const lang = userState.lang || 'en';
+            const aboutMsg = (lang === 'gu') ?
+                `🏭 *જય શ્રી અંબે ફૂડ મશીનરી* 🏭\n✨ *૩૦+ વર્ષનો ઉત્પાદન અનુભવ*\n━━━━━━━━━━━━━━━━━━━━\nઅમે હેવી-ડ્યુટી *થ્રી-ફેઝ કોમર્શિયલ પલ્વરાઇઝર (5 HP થી 30 HP)* ના સીધા ઉત્પાદક છીએ — આટા ચક્કી, મસાલા, હળદર અને મરચા ગ્રાઇન્ડીંગ મશીનો.\n\n👤 *સેલ્સ એક્ઝિક્યુટિવ:* ${rep.gu}\n📞 *કૉલ / WhatsApp:* ${rep.phone}\n⏰ *સમય:* સવારે 9:00 થી સાંજે 7:00 વાગ્યા સુધી\n\n🌐 https://jayambefoodmachinery.com\n▶️ https://www.youtube.com/@jayambefoodmachinery` :
+                (lang === 'hi') ?
+                `🏭 *जय श्री अम्बे फूड मशीनरी* 🏭\n✨ *३०+ वर्षों का अनुभव*\n━━━━━━━━━━━━━━━━━━━━\nहम हेवी-ड्यूटी *थ्री-फेज कमर्शियल पल्वराइजर (5 HP से 30 HP)* के सीधे निर्माता हैं — आटा चक्की, मसाला, हल्दी और मिर्ची ग्राइंडिंग मशीनें।\n\n👤 *सेल्स एग्जीक्यूटिव:* ${rep.hi}\n📞 *कॉल / WhatsApp:* ${rep.phone}\n⏰ *समय:* सुबह 9:00 बजे से शाम 7:00 बजे तक\n\n🌐 https://jayambefoodmachinery.com\n▶️ https://www.youtube.com/@jayambefoodmachinery` :
+                `🏭 *JAY SHREE AMBE FOOD MACHINERY* 🏭\n✨ *30+ Years of Manufacturing Excellence*\n━━━━━━━━━━━━━━━━━━━━\nWe are direct manufacturers of heavy-duty *Three-Phase Commercial Pulverizers (5 HP to 30 HP)* — Atta Chakki, Masala, Haldi and Chilly grinding machines.\n\n👤 *Sales Executive:* ${rep.en}\n📞 *Call / WhatsApp:* ${rep.phone}\n⏰ *Timing:* 9:00 AM to 7:00 PM\n\n🌐 https://jayambefoodmachinery.com\n▶️ https://www.youtube.com/@jayambefoodmachinery`;
+            await saveCustomerState(fromPhone, userState);
+            await sendWhatsAppText(fromPhone, aboutMsg);
+            return res.sendStatus(200);
+        }
+
+        // ACKNOWLEDGEMENT (ok / thanks): polite thank-you with sales executive name, number and calling hours
+        if (isCompletedCustomer && isAcknowledgement(incomingText)) {
+            const rep = ensureAssignedRep(userState);
+            const lang = userState.lang || 'hi';
+            const thankYouMsg = (lang === 'gu') ?
+                `🙏 *જય શ્રી અંબે ફૂડ મશીનરી સાથે જોડાવા બદલ આભાર!*\n\nઆપના સેલ્સ એક્ઝિક્યુટિવ:\n👤 *${rep.gu}*\n📞 *કૉલ / WhatsApp:* ${rep.phone}\n⏰ *સમય:* સવારે 9:00 થી સાંજે 7:00 વાગ્યા સુધી\n\nકોઈપણ માહિતી કે કવોટેશન માટે નિઃસંકોચ સંપર્ક કરશો. આપનો દિવસ શુભ રહે! 😊` :
+                (lang === 'en') ?
+                `🙏 *Thank you for connecting with Jay Shree Ambe Food Machinery!*\n\nYour Sales Executive:\n👤 *${rep.en}*\n📞 *Call / WhatsApp:* ${rep.phone}\n⏰ *Timing:* 9:00 AM to 7:00 PM\n\nFeel free to reach out for any information or quotation. Have a great day! 😊` :
+                `🙏 *जय श्री अम्बे फूड मशीनरी से जुड़ने के लिए धन्यवाद!*\n\nआपके सेल्स एग्जीक्यूटिव:\n👤 *${rep.hi}*\n📞 *कॉल / WhatsApp:* ${rep.phone}\n⏰ *समय:* सुबह 9:00 बजे से शाम 7:00 बजे तक\n\nकिसी भी जानकारी या कोटेशन के लिए बेझिझक संपर्क करें। आपका दिन शुभ हो! 😊`;
+            await sendWhatsAppText(fromPhone, thankYouMsg);
+            return res.sendStatus(200);
+        }
 
         // RETURNING CUSTOMER GREETINGS: If an existing customer greets (hi/hello/namaste/good afternoon/kem cho)
         if (isCompletedCustomer && isGreeting(incomingText)) {
@@ -793,10 +858,10 @@ app.post('/webhook', async (req, res) => {
             const customerName = userState.name ? ` ${userState.name}` : '';
 
             const welcomeBackMsg = (lang === 'gu') ?
-                `નમસ્તે${customerName}! 🙏\nજય શ્રી અંબે ફૂડ મશીનરીમાં આપનું સ્વાગત છે.\n\nઆપના ડેડિકેટેડ સેલ્સ એક્ઝિક્યુટિવ: *${rep.gu}*\n📞 સીધો સંપર્ક / કૉલ: *${rep.phone}*\n\nમશીન, કવોટેશન અથવા કોઈપણ માહિતી માટે આપ અહીં સીધું પૂછી શકો છો અથવા *${rep.gu}* સાથે સીધો સંપર્ક કરી શકો છો.` :
+                `🏭 *જય શ્રી અંબે ફૂડ મશીનરી* 🏭\n━━━━━━━━━━━━━━━━━━━━\nનમસ્તે${customerName}! 🙏 આપનું ફરીથી સ્વાગત છે.\n\n💼 *આપના ડેડિકેટેડ સેલ્સ એક્ઝિક્યુટિવ:*\n👤 *${rep.gu}*\n📞 *કૉલ / WhatsApp:* ${rep.phone}\n⏰ *કૉલ કરવાનો સમય:* સવારે 9:00 થી સાંજે 7:00 વાગ્યા સુધી\n\nમશીન, ટેકનિકલ વિગતો કે કવોટેશન માટે આપ અહીં સીધું પૂછી શકો છો અથવા *${rep.gu}* સાથે સીધો સંપર્ક કરી શકો છો.` :
                 (lang === 'en') ?
-                `Welcome back${customerName}! 🙏\nJay Shree Ambe Food Machinery.\n\nYour Dedicated Sales Executive: *${rep.en}*\n📞 Direct Contact / Call: *${rep.phone}*\n\nFor machine details, quotations, or specifications, you can ask right here or contact *${rep.en}* directly.` :
-                `नमस्ते${customerName}! 🙏\nजय श्री अम्बे फ़ूड मशीनरी में आपका स्वागत है।\n\nआपके समर्पित सेल्स एग्जीक्यूटिव: *${rep.hi}*\n📞 सीधा संपर्क / कॉल: *${rep.phone}*\n\nमशीन, कोटेशन या किसी भी जानकारी के लिए आप यहाँ लिख सकते हैं अथवा सीधे *${rep.hi}* से बात कर सकते हैं।`;
+                `🏭 *JAY SHREE AMBE FOOD MACHINERY* 🏭\n━━━━━━━━━━━━━━━━━━━━\nWelcome back${customerName}! 🙏\n\n💼 *Your Dedicated Sales Executive:*\n👤 *${rep.en}*\n📞 *Call / WhatsApp:* ${rep.phone}\n⏰ *Calling Hours:* 9:00 AM to 7:00 PM\n\nFor machine details, quotations, or specifications, feel free to ask here or reach out to *${rep.en}* directly.` :
+                `🏭 *जय श्री अम्बे फूड मशीनरी* 🏭\n━━━━━━━━━━━━━━━━━━━━\nनमस्ते${customerName}! 🙏 आपका पुनः स्वागत है।\n\n💼 *आपके समर्पित सेल्स एग्जीक्यूटिव:*\n👤 *${rep.hi}*\n📞 *कॉल / WhatsApp:* ${rep.phone}\n⏰ *कॉल करने का समय:* सुबह 9:00 बजे से शाम 7:00 बजे तक\n\nमशीन, तकनीकी विवरण या कोटेशन के लिए आप यहाँ लिख सकते हैं अथवा सीधे *${rep.hi}* से संपर्क कर सकते हैं।`;
 
             await sendWhatsAppText(fromPhone, welcomeBackMsg);
             return res.sendStatus(200);
@@ -815,6 +880,39 @@ app.post('/webhook', async (req, res) => {
             ]);
             return res.sendStatus(200);
         }
+
+        // 0.5 RE-PROMPT: Customer typed free text instead of tapping the option shown -> resend the SAME pending option message
+        const isFreeTypedText = !interactiveId && messageObj.type === 'text';
+        const inDetailsOrDone = ['COMPLETED', 'AWAITING_DETAILS', 'AWAITING_CITY'].includes(userState.step);
+        if (isFreeTypedText && !inDetailsOrDone) {
+            const rpLang = userState.lang || 'en';
+            if (userState.step === 'LANG' || !userState.lang || !userState.step || userState.step === 'INIT') {
+                await saveCustomerState(fromPhone, { step: 'LANG' });
+                await sendInteractiveButtons(fromPhone, "Welcome to Jay Shree Ambe Food Machinery! 🙏\nDirect Manufacturer of Commercial Pulverizers.\n\nPlease select your preferred language:\nકૃપા કરીને આપની ભાષા પસંદ કરો:\nकृपया अपनी भाषा चुनें:", [
+                    { id: 'lang_en', title: 'English' },
+                    { id: 'lang_hi', title: 'हिंदी' },
+                    { id: 'lang_gu', title: 'ગુજરાતી' }
+                ]);
+                return res.sendStatus(200);
+            }
+            // Replay the previous selection so the existing handlers below resend the pending question
+            if (userState.step === 'PHASE') {
+                interactiveId = `lang_${rpLang}`;
+            } else if (userState.step === 'CATEGORY') {
+                interactiveId = `ph_three_${rpLang}`;
+            } else if (userState.step === 'TYPE') {
+                const cEn = (userState.categoryEn || '').toLowerCase();
+                const catCode = cEn.includes('atta') ? 'atta' : cEn.includes('masala') ? 'masala' : cEn.includes('haldi') ? 'haldi' : 'chilly';
+                interactiveId = `cat_${catCode}_${rpLang}`;
+                incomingText = userState.category || userState.categoryEn || incomingText;
+            } else if (userState.step === 'HP') {
+                const t = userState.type || '';
+                const typeCode = /both|दोनों|બંને/i.test(t) ? 'both' : /cyclone|साइक्लोन|સાયક્લોન/i.test(t) ? 'cyc' : 'std';
+                interactiveId = `type_${typeCode}_${rpLang}`;
+                incomingText = userState.type || incomingText;
+            }
+        }
+
 
         // 1. LANGUAGE SELECTED OR VIEW MACHINES TAPPED -> Ask Phase
         if (interactiveId.startsWith('lang_') || interactiveId.startsWith('btn_restart')) {
@@ -874,10 +972,10 @@ app.post('/webhook', async (req, res) => {
             await saveCustomerState(fromPhone, userState);
 
             const contactMsg = (lang === 'gu') ?
-                `🏭 *જય શ્રી અંબે ફૂડ મશીનરી - સેલ્સ સપોર્ટ* 🏭\n━━━━━━━━━━━━━━━━━━━━\nઆપ અમારા ડેડિકેટેડ સેલ્સ એક્ઝિક્યુટિવ સાથે સીધો સંપર્ક કરી શકો છો:\n\n👤 *${rep.gu}*\n📞 *સીધો સંપર્ક:* ${rep.phone}\n\n✨ મશીન ટેકનિકલ માહિતી અને બેસ્ટ કવોટેશન માટે અમારી ટીમ આપને સંપૂર્ણ સહાય કરશે.` :
+                `🏭 *જય શ્રી અંબે ફૂડ મશીનરી - સેલ્સ સપોર્ટ* 🏭\n━━━━━━━━━━━━━━━━━━━━\nઆપ અમારા ડેડિકેટેડ સેલ્સ એક્ઝિક્યુટિવ સાથે સીધો સંપર્ક કરી શકો છો:\n\n👤 *${rep.gu}*\n📞 *કૉલ / WhatsApp:* ${rep.phone}\n⏰ *કૉલ કરવાનો સમય:* સવારે 9:00 થી સાંજે 7:00 વાગ્યા સુધી\n\n✨ મશીન ટેકનિકલ માહિતી અને બેસ્ટ કવોટેશન માટે અમારી ટીમ આપને સંપૂર્ણ સહાય કરશે.` :
                 (lang === 'hi') ?
-                `🏭 *जय श्री अम्बे फूड मशीनरी - सेल्स सपोर्ट* 🏭\n━━━━━━━━━━━━━━━━━━━━\nआप हमारे समर्पित सेल्स एग्जीक्यूटिव से सीधे संपर्क कर सकते हैं:\n\n👤 *${rep.hi}*\n📞 *सीधा संपर्क:* ${rep.phone}\n\n✨ मशीन की तकनीकी जानकारी एवं सर्वोत्तम कोटेशन के लिए हमारी टीम आपकी पूरी सहायता करेगी।` :
-                `🏭 *JAY SHREE AMBE FOOD MACHINERY - SALES SUPPORT* 🏭\n━━━━━━━━━━━━━━━━━━━━\nYou can directly reach our Dedicated Sales Executive:\n\n👤 *${rep.en}*\n📞 *Direct Contact:* ${rep.phone}\n\n✨ Our team will assist you with machine specs and the best quotation.`;
+                `🏭 *जय श्री अम्बे फूड मशीनरी - सेल्स सपोर्ट* 🏭\n━━━━━━━━━━━━━━━━━━━━\nआप हमारे समर्पित सेल्स एग्जीक्यूटिव से सीधे संपर्क कर सकते हैं:\n\n👤 *${rep.hi}*\n📞 *कॉल / WhatsApp:* ${rep.phone}\n⏰ *कॉल करने का समय:* सुबह 9:00 बजे से शाम 7:00 बजे तक\n\n✨ मशीन की तकनीकी जानकारी एवं सर्वोत्तम कोटेशन के लिए हमारी टीम आपकी पूरी सहायता करेगी।` :
+                `🏭 *JAY SHREE AMBE FOOD MACHINERY - SALES SUPPORT* 🏭\n━━━━━━━━━━━━━━━━━━━━\nYou can directly reach our Dedicated Sales Executive:\n\n👤 *${rep.en}*\n📞 *Call / WhatsApp:* ${rep.phone}\n⏰ *Calling Hours:* 9:00 AM to 7:00 PM\n\n✨ Our team will assist you with machine specs and the best quotation.`;
             await sendWhatsAppText(fromPhone, contactMsg);
             return res.sendStatus(200);
         }
@@ -889,10 +987,10 @@ app.post('/webhook', async (req, res) => {
             await saveCustomerState(fromPhone, userState);
 
             const mediaMsg = (lang === 'gu') ?
-                `🎥 *જય શ્રી અંબે ફૂડ મશીનરી - લાઈવ ડેમો વિડીયો:*\n\nઅમારા થ્રી-ફેઝ કોમર્શિયલ પલ્વરાઇઝર મશીનોના લાઈવ ગ્રાઇન્ડીંગ ડેમો નીચે આપેલ સત્તાવાર લિંક્સ પર જુઓ:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nકોઈપણ માહિતી અથવા કવોટેશન માટે સંપર્ક કરો:\n📞 *${rep.gu}:* ${rep.phone}` :
+                `🎥 *જય શ્રી અંબે ફૂડ મશીનરી - લાઈવ ડેમો વિડીયો:*\n\nઅમારા થ્રી-ફેઝ કોમર્શિયલ પલ્વરાઇઝર મશીનોના લાઈવ ગ્રાઇન્ડીંગ ડેમો નીચે આપેલ સત્તાવાર લિંક્સ પર જુઓ:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nકોઈપણ માહિતી અથવા કવોટેશન માટે સંપર્ક કરો:\n👤 *${rep.gu}*\n📞 *કૉલ / WhatsApp:* ${rep.phone}\n⏰ *કૉલ સમય:* સવારે 9:00 થી સાંજે 7:00 વાગ્યા સુધી` :
                 (lang === 'hi') ?
-                `🎥 *जय श्री अम्बे फूड मशीनरी - लाइव डेमो वीडियो:*\n\nहमारी थ्री-फेज कमर्शियल पल्वराइजर मशीनों के लाइव ग्राइंडिंग डेमो नीचे दिए गए आधिकारिक लिंक्स पर देखें:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nकिसी भी जानकारी या कोटेशन के लिए संपर्क करें:\n📞 *${rep.hi}:* ${rep.phone}` :
-                `🎥 *Jay Shree Ambe Food Machinery - Live Demo Videos:*\n\nWatch our three-phase commercial pulverizers in continuous live operation on our official channels:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nFor pricing and technical assistance:\n📞 *${rep.en}:* ${rep.phone}`;
+                `🎥 *जय श्री अम्बे फूड मशीनरी - लाइव डेमो वीडियो:*\n\nहमारी थ्री-फेज कमर्शियल पल्वराइजर मशीनों के लाइव ग्राइंडिंग डेमो नीचे दिए गए आधिकारिक लिंक्स पर देखें:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nकिसी भी जानकारी या कोटेशन के लिए संपर्क करें:\n👤 *${rep.hi}*\n📞 *कॉल / WhatsApp:* ${rep.phone}\n⏰ *कॉल समय:* सुबह 9:00 बजे से शाम 7:00 बजे तक` :
+                `🎥 *Jay Shree Ambe Food Machinery - Live Demo Videos:*\n\nWatch our three-phase commercial pulverizers in continuous live operation on our official channels:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nFor pricing and technical assistance:\n👤 *${rep.en}*\n📞 *Call / WhatsApp:* ${rep.phone}\n⏰ *Calling Hours:* 9:00 AM to 7:00 PM`;
 
             await sendWhatsAppText(fromPhone, mediaMsg);
             return res.sendStatus(200);
@@ -1033,10 +1131,10 @@ app.post('/webhook', async (req, res) => {
                 const rep = ensureAssignedRep(userState);
                 await saveCustomerState(fromPhone, userState);
                 const mediaMsg = (lang === 'gu') ?
-                    `🎥 *લાઈવ મશીન ડેમો વિડીયો અને ફોટા:*\n\nઅમારા પલ્વરાઇઝર મશીનોના લાઈવ ગ્રાઇન્ડીંગ ડેમો નીચે આપેલ સત્તાવાર લિંક્સ પર જુઓ:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nકોઈપણ તાત્કાલિક માહિતી માટે સંપર્ક કરો:\n📞 *${rep.gu}:* ${rep.phone}` :
+                    `🎥 *લાઈવ મશીન ડેમો વિડીયો અને ફોટા:*\n\nઅમારા પલ્વરાઇઝર મશીનોના લાઈવ ગ્રાઇન્ડીંગ ડેમો નીચે આપેલ સત્તાવાર લિંક્સ પર જુઓ:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nકોઈપણ તાત્કાલિક માહિતી માટે સંપર્ક કરો:\n👤 *${rep.gu}*\n📞 *કૉલ / WhatsApp:* ${rep.phone}\n⏰ *કૉલ સમય:* સવારે 9:00 થી સાંજે 7:00 વાગ્યા સુધી` :
                     (lang === 'hi') ?
-                    `🎥 *लाइव मशीन डेमो वीडियो और फोटो:*\n\nहमारी पल्वराइजर मशीनों के लाइव ग्राइंडिंग डेमो नीचे दिए गए आधिकारिक लिंक्स पर देखें:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nकिसी भी त्वरित जानकारी के लिए संपर्क करें:\n📞 *${rep.hi}:* ${rep.phone}` :
-                    `🎥 *Live Machine Demo Videos & Photos:*\n\nWatch our commercial pulverizers in live continuous operation on our official channels:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nFor any immediate assistance:\n📞 *${rep.en}:* ${rep.phone}`;
+                    `🎥 *लाइव मशीन डेमो वीडियो और फोटो:*\n\nहमारी पल्वराइजर मशीनों के लाइव ग्राइंडिंग डेमो नीचे दिए गए आधिकारिक लिंक्स पर देखें:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nकिसी भी त्वरित जानकारी के लिए संपर्क करें:\n👤 *${rep.hi}*\n📞 *कॉल / WhatsApp:* ${rep.phone}\n⏰ *कॉल समय:* सुबह 9:00 बजे से शाम 7:00 बजे तक` :
+                    `🎥 *Live Machine Demo Videos & Photos:*\n\nWatch our commercial pulverizers in live continuous operation on our official channels:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nFor any immediate assistance:\n👤 *${rep.en}*\n📞 *Call / WhatsApp:* ${rep.phone}\n⏰ *Calling Hours:* 9:00 AM to 7:00 PM`;
 
                 await sendWhatsAppText(fromPhone, mediaMsg);
                 return res.sendStatus(200);
@@ -1120,16 +1218,24 @@ async function answerWithGemini(toPhone, incomingText, userState) {
     const rep = ensureAssignedRep(userState);
     await saveCustomerState(toPhone, userState);
 
-    const contactLine = (lang === 'gu') ? `📞 *${rep.gu}:* ${rep.phone}` :
-                        (lang === 'hi') ? `📞 *${rep.hi}:* ${rep.phone}` :
-                        `📞 *${rep.en}:* ${rep.phone}`;
+    const repCard = (lang === 'gu') ?
+        `👤 *સેલ્સ એક્ઝિક્યુટિવ:* ${rep.gu}\n📞 *કૉલ / WhatsApp:* ${rep.phone}\n⏰ *કૉલ કરવાનો સમય:* સવારે 9:00 થી સાંજે 7:00 વાગ્યા સુધી` :
+        (lang === 'hi') ?
+        `👤 *सेल्स एग्जीक्यूटिव:* ${rep.hi}\n📞 *कॉल / WhatsApp:* ${rep.phone}\n⏰ *कॉल करने का समय:* सुबह 9:00 बजे से शाम 7:00 बजे तक` :
+        `👤 *Sales Executive:* ${rep.en}\n📞 *Call / WhatsApp:* ${rep.phone}\n⏰ *Calling Hours:* 9:00 AM to 7:00 PM`;
+
+    const repFooter = (lang === 'gu') ?
+        `\n\n━━━━━━━━━━━━━━━━━━━━\n👤 *સેલ્સ એક્ઝિક્યુટિવ:* ${rep.gu}\n📞 *કૉલ / WhatsApp:* ${rep.phone}\n⏰ *કૉલ કરવાનો સમય:* સવારે 9:00 થી સાંજે 7:00 વાગ્યા સુધી` :
+        (lang === 'hi') ?
+        `\n\n━━━━━━━━━━━━━━━━━━━━\n👤 *सेल्स एग्जीक्यूटिव:* ${rep.hi}\n📞 *कॉल / WhatsApp:* ${rep.phone}\n⏰ *कॉल करने का समय:* सुबह 9:00 बजे से शाम 7:00 बजे तक` :
+        `\n\n━━━━━━━━━━━━━━━━━━━━\n👤 *Sales Executive:* ${rep.en}\n📞 *Call / WhatsApp:* ${rep.phone}\n⏰ *Calling Hours:* 9:00 AM to 7:00 PM`;
 
     if (!geminiModel) {
         const fallbackGuide = (lang === 'gu') ?
-            `કોઈપણ માહિતી અથવા કવોટેશન માટે આપ અમારા ડેડિકેટેડ સેલ્સ એક્ઝિક્યુટિવ સાથે સીધો સંપર્ક કરી શકો છો:\n${contactLine}\n\nઅમારી ટીમ આપની સંપૂર્ણ સહાય કરશે.` :
+            `🏭 *જય શ્રી અંબે ફૂડ મશીનરી* 🏭\n━━━━━━━━━━━━━━━━━━━━\nકોઈપણ માહિતી અથવા કવોટેશન માટે આપ અમારા ડેડિકેટેડ સેલ્સ એક્ઝિક્યુટિવ સાથે સીધો સંપર્ક કરી શકો છો:\n\n${repCard}\n\n✨ અમારી ટીમ આપની સંપૂર્ણ સહાય કરશે.` :
             (lang === 'hi') ?
-            `किसी भी जानकारी या कोटेशन के लिए आप हमारे समर्पित सेल्स एग्जीक्यूटिव से सीधे संपर्क कर सकते हैं:\n${contactLine}\n\nहमारी टीम आपकी पूरी सहायता करेगी।` :
-            `For any product inquiry or pricing, you can reach our Dedicated Sales Executive directly:\n${contactLine}\n\nOur team will assist you immediately.`;
+            `🏭 *जय श्री अम्बे फूड मशीनरी* 🏭\n━━━━━━━━━━━━━━━━━━━━\nकिसी भी जानकारी या कोटेशन के लिए आप हमारे समर्पित सेल्स एग्जीक्यूटिव से सीधे संपर्क कर सकते हैं:\n\n${repCard}\n\n✨ हमारी टीम आपकी पूरी सहायता करेगी।` :
+            `🏭 *JAY SHREE AMBE FOOD MACHINERY* 🏭\n━━━━━━━━━━━━━━━━━━━━\nFor any product inquiry or quotation, you can reach our Dedicated Sales Executive directly:\n\n${repCard}\n\n✨ Our team will assist you immediately.`;
         await sendWhatsAppText(toPhone, fallbackGuide);
         return;
     }
@@ -1140,23 +1246,22 @@ async function answerWithGemini(toPhone, incomingText, userState) {
         const prompt = `Customer WhatsApp Phone: ${toPhone}
 Customer Preferred Language: ${userLang}
 Assigned Sales Executive: ${repNameDisplay} (${rep.phone})
+Official Calling Support Hours: 9:00 AM to 7:00 PM
 Customer Question: "${incomingText}"
 
 INSTRUCTIONS:
 1. Provide a polite, helpful, and concise answer directly based on the Jay Shree Ambe catalog in your system instruction.
 2. Reply in the same language the customer asked (Gujarati, Hindi, or English).
 3. If the customer asks in Hindi, write in pure Hindi (Devanagari script). If Gujarati, write in pure Gujarati script. No Hinglish/Gujlish.
-4. If the customer is inquiring about pricing or quotation, mention the catalog price and invite them to connect with ${repNameDisplay} (${rep.phone}).
-5. Keep the reply short and readable (2 to 4 sentences maximum) for mobile WhatsApp.`;
+4. If the customer asks about calling time, support hours, or when to call: explicitly inform them that they can call ${repNameDisplay} (${rep.phone}) between 9:00 AM and 6:00 PM.
+5. If the customer is inquiring about pricing or quotation, mention the catalog price and invite them to connect with ${repNameDisplay} (${rep.phone}) between 9:00 AM and 6:00 PM.
+6. Keep the reply short and readable (2 to 4 sentences maximum) for mobile WhatsApp.`;
 
         const result = await geminiModel.generateContent(prompt);
         let aiReply = result.response.text().trim();
 
         if (aiReply) {
             if (!aiReply.includes(rep.phone)) {
-                const repFooter = (lang === 'gu') ? `\n\n📞 સંપર્ક / કૉલ: *${rep.gu}* (${rep.phone})` :
-                                  (lang === 'en') ? `\n\n📞 Contact / Call: *${rep.en}* (${rep.phone})` :
-                                  `\n\n📞 संपर्क / कॉल: *${rep.hi}* (${rep.phone})`;
                 aiReply += repFooter;
             }
             await sendWhatsAppText(toPhone, aiReply);
@@ -1164,8 +1269,10 @@ INSTRUCTIONS:
     } catch (err) {
         console.error('Gemini error:', err.message);
         const fallbackGuide = (lang === 'gu') ?
-            `કોઈપણ માહિતી અથવા કવોટેશન માટે આપ અમારા ડેડિકેટેડ સેલ્સ એક્ઝિક્યુટિવ સાથે સીધો સંપર્ક કરી શકો છો:\n${contactLine}\n\nઅમારી ટીમ આપની સંપૂર્ણ સહાય કરશે.` :
-            `किसी भी जानकारी या कोटेशन के लिए आप हमारे समर्पित सेल्स एग्जीक्यूटिव से सीधे संपर्क कर सकते हैं:\n${contactLine}\n\nहमारी टीम आपकी पूरी सहायता करेगी।`;
+            `🏭 *જય શ્રી અંબે ફૂડ મશીનરી* 🏭\n━━━━━━━━━━━━━━━━━━━━\nકોઈપણ માહિતી અથવા કવોટેશન માટે આપ અમારા ડેડિકેટેડ સેલ્સ એક્ઝિક્યુટિવ સાથે સીધો સંપર્ક કરી શકો છો:\n\n${repCard}\n\n✨ અમારી ટીમ આપની સંપૂર્ણ સહાય કરશે.` :
+            (lang === 'hi') ?
+            `🏭 *जय श्री अम्बे फूड मशीनरी* 🏭\n━━━━━━━━━━━━━━━━━━━━\nकिसी भी जानकारी या कोटेशन के लिए आप हमारे समर्पित सेल्स एग्जीक्यूटिव से सीधे संपर्क कर सकते हैं:\n\n${repCard}\n\n✨ हमारी टीम आपकी पूरी सहायता करेगी।` :
+            `🏭 *JAY SHREE AMBE FOOD MACHINERY* 🏭\n━━━━━━━━━━━━━━━━━━━━\nFor any product inquiry or quotation, you can reach our Dedicated Sales Executive directly:\n\n${repCard}\n\n✨ Our team will assist you immediately.`;
         await sendWhatsAppText(toPhone, fallbackGuide);
     }
 }
