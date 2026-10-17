@@ -434,11 +434,23 @@ function parseNameAndLocation(inputStr, defaultLang = 'en') {
 }
 
 
-// Helper: Persist Customer Session to Memory & Supabase
+// Helper: Indian Standard Time (IST) Formatter
+function getISTTimestamp() {
+    return new Date().toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+    });
+}
+
+// Helper: Persist Customer Session to Memory & Supabase with Clean IST & Sales Rep Format
 async function saveCustomerState(phone, state) {
     if (!phone) return;
     // PERMANENT REP GUARANTEE: never lose the assigned salesperson when state is saved/reset.
-    // Priority: rep already on this state -> rep already in memory -> deterministic rep by phone number.
     if (!state.assignedRep || !state.assignedRepPhone) {
         const prev = global.customerState[phone];
         const src = (prev && prev.assignedRep && prev.assignedRepPhone) ? {
@@ -455,23 +467,65 @@ async function saveCustomerState(phone, state) {
     global.customerState[phone] = state;
     if (supabase) {
         try {
+            const repName = state.assignedRep || 'Sales Team';
+            const displayName = state.name ? `${state.name} [${repName}]` : `New WhatsApp Inquiry [${repName}]`;
+            const cleanCity = state.city || '';
+            const istTime = getISTTimestamp();
+            let stateSummary = '';
+            if (state.step === 'COMPLETED') {
+                stateSummary = `${cleanCity || 'India'}, ${state.state || 'India'} (${state.hp || '20 HP'}) | IST: ${istTime}`;
+            } else if (state.step === 'AWAITING_DETAILS' || state.step === 'AWAITING_CITY') {
+                stateSummary = `Awaiting Address (${state.hp || '20 HP'}) | IST: ${istTime}`;
+            } else if (state.step === 'HP' || state.step === 'TYPE' || state.step === 'CATEGORY' || state.step === 'PHASE') {
+                stateSummary = `Choosing Machine (${state.category || 'Commercial'}) | IST: ${istTime}`;
+            } else {
+                stateSummary = `Chat Started | IST: ${istTime}`;
+            }
+
             await supabase.from('whatsapp_customers').upsert([{
                 phone: phone,
-                name: state.name || null,
-                state: 'SESSION:' + JSON.stringify(state),
+                name: displayName,
+                City: cleanCity || 'Pending',
+                state: stateSummary,
                 last_message: new Date().toISOString()
             }], { onConflict: 'phone' });
         } catch (e) {
-            try {
-                await supabase.from('whatsapp_customers').insert([{
-                    phone: phone,
-                    name: state.name || null,
-                    state: 'SESSION:' + JSON.stringify(state),
-                    last_message: new Date().toISOString()
-                }]);
-            } catch (err) {}
+            console.error('Supabase saveCustomerState error:', e.message);
         }
     }
+}
+
+// Helper: Push initial WhatsApp inquiry to Odoo CRM (captures visitors even if they don't finish details)
+function syncInitialLeadToOdoo(phone, userState) {
+    return new Promise((resolve) => {
+        try {
+            const rep = ensureAssignedRep(userState);
+            const common = xmlrpc.createSecureClient({ host: 'v1.viducrm.com', port: 443, path: '/xmlrpc/2/common' });
+            common.methodCall('authenticate', [ODOO_DB, ODOO_USER, ODOO_PASS, {}], (err, uid) => {
+                if (err || !uid) return resolve(false);
+                const models = xmlrpc.createSecureClient({ host: 'v1.viducrm.com', port: 443, path: '/xmlrpc/2/object' });
+                const istTime = getISTTimestamp();
+                const leadRecord = {
+                    name: `WhatsApp Lead: ${phone} - Initial Inquiry`,
+                    contact_name: userState.name || 'WhatsApp Visitor',
+                    mobile: phone,
+                    phone: phone,
+                    city: userState.city || '',
+                    user_id: rep.id,
+                    description: `Customer initiated WhatsApp interaction.\nTime (IST): ${istTime}\nAssigned Sales Executive: ${rep.name} (${rep.phone})\nStatus: Initial interaction\nSource: WhatsApp AI Interactive Agent`
+                };
+                models.methodCall('execute_kw', [ODOO_DB, uid, ODOO_PASS, 'crm.lead', 'create', [[leadRecord]]], (leadErr, leadId) => {
+                    if (!leadErr && leadId) {
+                        userState.leadId = leadId;
+                        console.log(`Created initial Odoo lead ID: ${leadId} for ${phone} assigned to ${rep.name}`);
+                    }
+                    resolve(true);
+                });
+            });
+        } catch (e) {
+            resolve(false);
+        }
+    });
 }
 
 // Helper: Lookup Customer in Odoo CRM (Permanent 1-Customer to 1-Salesperson Mapping)
@@ -872,7 +926,12 @@ app.post('/webhook', async (req, res) => {
         const isFirstGreeting = isGreeting(incomingText) && !isCompletedCustomer && (!userState.lang || userState.step === 'INIT' || userState.step === 'LANG');
 
         if (isExplicitReset || isFirstGreeting) {
-            await saveCustomerState(fromPhone, { step: 'LANG' });
+            ensureAssignedRep(userState);
+            await saveCustomerState(fromPhone, { ...userState, step: 'LANG' });
+            // Immediately sync initial WhatsApp lead to Odoo CRM so abandoned leads are never lost!
+            if (!userState.leadId) {
+                syncInitialLeadToOdoo(fromPhone, userState);
+            }
             await sendInteractiveButtons(fromPhone, "Welcome to Jay Shree Ambe Food Machinery! 🙏\nDirect Manufacturer of Commercial Pulverizers.\n\nPlease select your preferred language:\nકૃપા કરીને આપની ભાષા પસંદ કરો:\nकृपया अपनी भाषा चुनें:", [
                 { id: 'lang_en', title: 'English' },
                 { id: 'lang_hi', title: 'हिंदी' },
@@ -1123,7 +1182,13 @@ app.post('/webhook', async (req, res) => {
         if (messageObj.type === 'text') {
             const lang = userState.lang || 'en';
 
-            // If customer asks for Video / Demo
+            // Case A: Customer already COMPLETED inquiry -> Send directly to Gemini AI (Conversational sales engineer)
+            if (userState.step === 'COMPLETED') {
+                await answerWithGemini(fromPhone, incomingText, userState);
+                return res.sendStatus(200);
+            }
+
+            // If customer in early stage asks for Video / Demo
             if (lower.includes('video') || lower.includes('વિડીયો') || lower.includes('वीडियो') ||
                 lower.includes('youtube') || lower.includes('facebook') || lower.includes('demo') ||
                 lower.includes('photo') || lower.includes('image')) {
@@ -1137,12 +1202,6 @@ app.post('/webhook', async (req, res) => {
                     `🎥 *Live Machine Demo Videos & Photos:*\n\nWatch our commercial pulverizers in live continuous operation on our official channels:\n\n▶️ *YouTube Channel:* https://www.youtube.com/@jayambefoodmachinery\n📘 *Facebook Page:* https://www.facebook.com/share/164cTgG9YZ/\n🌐 *Official Website:* https://jayambefoodmachinery.com\n\nFor any immediate assistance:\n👤 *${rep.en}*\n📞 *Call / WhatsApp:* ${rep.phone}\n⏰ *Calling Hours:* 9:00 AM to 7:00 PM`;
 
                 await sendWhatsAppText(fromPhone, mediaMsg);
-                return res.sendStatus(200);
-            }
-
-            // Case A: Customer already COMPLETED inquiry and sends extra question
-            if (userState.step === 'COMPLETED') {
-                await answerWithGemini(fromPhone, incomingText, userState);
                 return res.sendStatus(200);
             }
 
@@ -1479,19 +1538,16 @@ function syncLeadToOdoo(phone, leadData) {
 async function syncLeadToSupabase(phone, leadData) {
     if (!supabase) return;
     try {
-        // Sync to whatsapp_customers table (phone, name, state, last_message)
-        try {
-            const assignedName = leadData.assignedRep || 'Sales Team';
-            await supabase.from('whatsapp_customers').upsert([{
-                phone: phone,
-                name: leadData.name ? `${leadData.name} [${assignedName}]` : null,
-                state: `${leadData.city || ''}, ${leadData.state || 'India'} (${leadData.hp || '20 HP'})`,
-                last_message: new Date().toISOString()
-            }], { onConflict: 'phone' });
-            console.log('Successfully synced to Supabase whatsapp_customers for:', phone);
-        } catch (custErr) {
-            console.error('whatsapp_customers insert error:', custErr.message);
-        }
+        const assignedName = leadData.assignedRep || 'Sales Team';
+        const istTime = getISTTimestamp();
+        await supabase.from('whatsapp_customers').upsert([{
+            phone: phone,
+            name: leadData.name ? `${leadData.name} [${assignedName}]` : `New Lead [${assignedName}]`,
+            City: leadData.city || 'Pending',
+            state: `${leadData.city || 'India'}, ${leadData.state || 'India'} (${leadData.hp || '20 HP'}) | IST: ${istTime}`,
+            last_message: new Date().toISOString()
+        }], { onConflict: 'phone' });
+        console.log('Successfully synced to Supabase whatsapp_customers for:', phone);
     } catch (e) {
         console.error('Supabase sync general error:', e.message);
     }
