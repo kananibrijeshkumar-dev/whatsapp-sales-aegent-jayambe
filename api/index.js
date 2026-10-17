@@ -607,8 +607,34 @@ function getNextRepFromOdoo() {
     });
 }
 
+// Helper: Get next fair sequential round-robin salesperson across all 9 members (1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 1)
+async function getNextFairRoundRobinRep() {
+    if (supabase) {
+        try {
+            const { data } = await supabase
+                .from('whatsapp_customers')
+                .select('name')
+                .order('last_message', { ascending: false })
+                .limit(10);
+            for (const row of (data || [])) {
+                const m = (row.name || '').match(/\[(.*?)\]/);
+                if (m && m[1]) {
+                    const idx = SALES_TEAM.findIndex(t => t.name.toLowerCase() === m[1].toLowerCase());
+                    if (idx !== -1) {
+                        const next = (idx + 1) % SALES_TEAM.length;
+                        return SALES_TEAM[next];
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Fair round-robin lookup error:', e.message);
+        }
+    }
+    const fbIdx = Math.floor(Date.now() / 1000) % SALES_TEAM.length;
+    return SALES_TEAM[fbIdx];
+}
+
 // Helper: Assign Permanent Salesperson to Customer Phone (Consistent & Deterministic)
-// This guarantees that ANY message from this phone number ALWAYS connects to the exact same salesperson!
 function getDeterministicRepForPhone(phone) {
     if (!phone) return SALES_TEAM[0];
     const cleanDigits = String(phone).replace(/[^0-9]/g, '');
@@ -627,7 +653,74 @@ async function getCustomerState(phone) {
         return global.customerState[phone];
     }
 
-    // 1. Primary Source of Truth: Check Odoo CRM for Permanent Salesperson Binding!
+    // 1. Primary Source of Truth: Check Supabase for previous customer record
+    if (supabase) {
+        try {
+            const { data } = await supabase
+                .from('whatsapp_customers')
+                .select('name, state, City')
+                .eq('phone', phone)
+                .order('last_message', { ascending: false })
+                .limit(1);
+
+            if (data && data.length > 0) {
+                const row = data[0];
+                const rawName = row.name || '';
+                
+                // Extract assigned rep from brackets: e.g. "Brijesh [Ritu]" or "New WhatsApp Inquiry [Ritu]"
+                let matchedRep = null;
+                const repMatch = rawName.match(/\[(.*?)\]/);
+                if (repMatch && repMatch[1]) {
+                    const repNameInBracket = repMatch[1].trim().toLowerCase();
+                    matchedRep = SALES_TEAM.find(m => m.name.toLowerCase() === repNameInBracket);
+                }
+                if (!matchedRep) {
+                    matchedRep = await getNextFairRoundRobinRep();
+                }
+
+                // Check if customer already submitted their real name (completed inquiry)
+                const isRealCustomer = rawName && !rawName.startsWith('New WhatsApp Inquiry') && !rawName.startsWith('New Lead');
+
+                if (isRealCustomer) {
+                    const cleanCustName = rawName.replace(/\s*\[.*?\]$/, '').trim();
+                    const cleanCity = row.City && row.City !== 'Pending' ? row.City : '';
+                    const restoredState = {
+                        step: 'COMPLETED',
+                        lang: 'hi',
+                        name: cleanCustName,
+                        city: cleanCity,
+                        assignedRep: matchedRep.name,
+                        assignedRepId: matchedRep.id,
+                        assignedRepGu: matchedRep.gu,
+                        assignedRepHi: matchedRep.hi,
+                        assignedRepEn: matchedRep.en,
+                        assignedRepPhone: matchedRep.phone
+                    };
+                    global.customerState[phone] = restoredState;
+                    console.log(`Restored completed customer from Supabase for ${phone}: ${cleanCustName} [${matchedRep.name}]`);
+                    return restoredState;
+                } else {
+                    // Customer was in-progress or just started: preserve rep!
+                    const restoredState = {
+                        step: 'INIT',
+                        lang: 'en',
+                        assignedRep: matchedRep.name,
+                        assignedRepId: matchedRep.id,
+                        assignedRepGu: matchedRep.gu,
+                        assignedRepHi: matchedRep.hi,
+                        assignedRepEn: matchedRep.en,
+                        assignedRepPhone: matchedRep.phone
+                    };
+                    global.customerState[phone] = restoredState;
+                    return restoredState;
+                }
+            }
+        } catch (e) {
+            console.error('Supabase restore error:', e.message);
+        }
+    }
+
+    // 2. Secondary check: Check Odoo CRM for existing completed customer
     try {
         const odooCustomer = await lookupCustomerInOdoo(phone);
         if (odooCustomer && odooCustomer.rep) {
@@ -652,35 +745,8 @@ async function getCustomerState(phone) {
         console.error('Odoo lookup error in getCustomerState:', e.message);
     }
 
-    // 2. Secondary check: Supabase customer session
-    if (supabase) {
-        try {
-            const { data } = await supabase
-                .from('whatsapp_customers')
-                .select('state')
-                .eq('phone', phone)
-                .order('last_message', { ascending: false })
-                .limit(1);
-            if (data && data.length > 0 && data[0].state && data[0].state.startsWith('SESSION:')) {
-                const restored = JSON.parse(data[0].state.replace('SESSION:', ''));
-                if (!restored.assignedRep || !restored.assignedRepPhone) {
-                    const dRep = getDeterministicRepForPhone(phone);
-                    restored.assignedRep = dRep.name;
-                    restored.assignedRepId = dRep.id;
-                    restored.assignedRepGu = dRep.gu;
-                    restored.assignedRepHi = dRep.hi;
-                    restored.assignedRepEn = dRep.en;
-                    restored.assignedRepPhone = dRep.phone;
-                }
-                global.customerState[phone] = restored;
-                return restored;
-            }
-        } catch (e) {}
-    }
-
-    // 3. For BRAND NEW customer: Deterministically assign permanent salesperson by Phone Number!
-    // This GUARANTEES the customer ALWAYS gets the exact same rep on message 1, message 2, and forever!
-    const rep = getDeterministicRepForPhone(phone);
+    // 3. For BRAND NEW customer: Assign next fair round-robin salesperson!
+    const rep = await getNextFairRoundRobinRep();
     const newState = {
         lang: 'en',
         step: 'INIT',
@@ -692,7 +758,7 @@ async function getCustomerState(phone) {
         assignedRepPhone: rep.phone
     };
     global.customerState[phone] = newState;
-    console.log(`Assigned permanent rep for new customer ${phone}: ${rep.name}`);
+    console.log(`Assigned fair round-robin rep for new customer ${phone}: ${rep.name}`);
     return newState;
 }
 
@@ -924,14 +990,11 @@ app.post('/webhook', async (req, res) => {
         // 0. RESET / START (ONLY FOR BRAND NEW CUSTOMERS or EXPLICIT RESET)
         const isExplicitReset = ['restart', 'reset', 'menu', 'bhasha', 'change language'].includes(incomingText.toLowerCase().trim());
         const isFirstGreeting = isGreeting(incomingText) && !isCompletedCustomer && (!userState.lang || userState.step === 'INIT' || userState.step === 'LANG');
+        const isBrandNewVisitor = !isCompletedCustomer && (!userState.lang || userState.step === 'INIT');
 
-        if (isExplicitReset || isFirstGreeting) {
+        if (isExplicitReset || isFirstGreeting || isBrandNewVisitor) {
             ensureAssignedRep(userState);
             await saveCustomerState(fromPhone, { ...userState, step: 'LANG' });
-            // Immediately sync initial WhatsApp lead to Odoo CRM so abandoned leads are never lost!
-            if (!userState.leadId) {
-                syncInitialLeadToOdoo(fromPhone, userState);
-            }
             await sendInteractiveButtons(fromPhone, "Welcome to Jay Shree Ambe Food Machinery! 🙏\nDirect Manufacturer of Commercial Pulverizers.\n\nPlease select your preferred language:\nકૃપા કરીને આપની ભાષા પસંદ કરો:\nकृपया अपनी भाषा चुनें:", [
                 { id: 'lang_en', title: 'English' },
                 { id: 'lang_hi', title: 'हिंदी' },
