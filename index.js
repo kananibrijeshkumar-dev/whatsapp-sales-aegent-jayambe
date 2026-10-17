@@ -310,13 +310,12 @@ function isGreeting(text) {
         'jay shree krishna', 'jai shree krishna', 'jsk',
         'jay ambe', 'jai ambe', 'jay mataji', 'jai mataji',
         'radhe radhe', 'ram ram', 'sitaram', 'shree ram',
-        'start', 'restart', 'menu', 'help', 'info', 'yo', 'ola'
+        'yo', 'ola'
     ];
     if (greetingWords.includes(clean.trim())) return true;
     for (const g of greetingWords) {
         if (clean.startsWith(g + ' ') || clean.endsWith(' ' + g)) return true;
     }
-    if (clean.trim().length <= 2) return true;
     return false;
 }
 
@@ -653,7 +652,32 @@ async function getCustomerState(phone) {
         return global.customerState[phone];
     }
 
-    // 1. Primary Source of Truth: Check Supabase for previous customer record
+    // 1. Primary check: Has a lead ALREADY been generated in Odoo CRM for this customer?
+    try {
+        const odooCustomer = await lookupCustomerInOdoo(phone);
+        if (odooCustomer && odooCustomer.rep) {
+            const restoredState = {
+                step: 'COMPLETED',
+                lang: 'hi',
+                name: odooCustomer.name || '',
+                city: odooCustomer.city || '',
+                leadId: odooCustomer.leadId,
+                assignedRep: odooCustomer.rep.name,
+                assignedRepId: odooCustomer.rep.id,
+                assignedRepGu: odooCustomer.rep.gu,
+                assignedRepHi: odooCustomer.rep.hi,
+                assignedRepEn: odooCustomer.rep.en,
+                assignedRepPhone: odooCustomer.rep.phone
+            };
+            global.customerState[phone] = restoredState;
+            console.log(`Customer ${phone} has active CRM lead ID ${odooCustomer.leadId} under ${odooCustomer.rep.name}. State permanently locked to COMPLETED.`);
+            return restoredState;
+        }
+    } catch (e) {
+        console.error('Odoo lookup error in getCustomerState:', e.message);
+    }
+
+    // 2. Secondary check: Check Supabase for previous customer record
     if (supabase) {
         try {
             const { data } = await supabase
@@ -678,16 +702,17 @@ async function getCustomerState(phone) {
                     matchedRep = await getNextFairRoundRobinRep();
                 }
 
-                // Check if customer already submitted their real name (completed inquiry)
+                // If customer submitted name OR has machine inquiry history in state (already a lead)
                 const isRealCustomer = rawName && !rawName.startsWith('New WhatsApp Inquiry') && !rawName.startsWith('New Lead');
+                const hasLeadHistory = isRealCustomer || (row.state && !row.state.includes('Chat Started'));
 
-                if (isRealCustomer) {
+                if (hasLeadHistory) {
                     const cleanCustName = rawName.replace(/\s*\[.*?\]$/, '').trim();
                     const cleanCity = row.City && row.City !== 'Pending' ? row.City : '';
                     const restoredState = {
                         step: 'COMPLETED',
                         lang: 'hi',
-                        name: cleanCustName,
+                        name: isRealCustomer ? cleanCustName : '',
                         city: cleanCity,
                         assignedRep: matchedRep.name,
                         assignedRepId: matchedRep.id,
@@ -697,10 +722,10 @@ async function getCustomerState(phone) {
                         assignedRepPhone: matchedRep.phone
                     };
                     global.customerState[phone] = restoredState;
-                    console.log(`Restored completed customer from Supabase for ${phone}: ${cleanCustName} [${matchedRep.name}]`);
+                    console.log(`Restored active lead customer from Supabase for ${phone}: ${matchedRep.name} (Step: COMPLETED)`);
                     return restoredState;
                 } else {
-                    // Customer was in-progress or just started: preserve rep!
+                    // Brand new visitor who just chatted: preserve assigned rep
                     const restoredState = {
                         step: 'INIT',
                         lang: 'en',
@@ -718,31 +743,6 @@ async function getCustomerState(phone) {
         } catch (e) {
             console.error('Supabase restore error:', e.message);
         }
-    }
-
-    // 2. Secondary check: Check Odoo CRM for existing completed customer
-    try {
-        const odooCustomer = await lookupCustomerInOdoo(phone);
-        if (odooCustomer && odooCustomer.rep) {
-            const restoredState = {
-                step: 'COMPLETED',
-                lang: 'hi',
-                name: odooCustomer.name || '',
-                city: odooCustomer.city || '',
-                leadId: odooCustomer.leadId,
-                assignedRep: odooCustomer.rep.name,
-                assignedRepId: odooCustomer.rep.id,
-                assignedRepGu: odooCustomer.rep.gu,
-                assignedRepHi: odooCustomer.rep.hi,
-                assignedRepEn: odooCustomer.rep.en,
-                assignedRepPhone: odooCustomer.rep.phone
-            };
-            global.customerState[phone] = restoredState;
-            console.log(`Restored permanent Odoo CRM rep for ${phone}: ${odooCustomer.rep.name}`);
-            return restoredState;
-        }
-    } catch (e) {
-        console.error('Odoo lookup error in getCustomerState:', e.message);
     }
 
     // 3. For BRAND NEW customer: Assign next fair round-robin salesperson!
@@ -1165,6 +1165,7 @@ app.post('/webhook', async (req, res) => {
             userState.categoryEn = catNameEn;
             userState.step = 'TYPE';
             await saveCustomerState(fromPhone, userState);
+            await syncLeadToOdoo(fromPhone, userState);
 
             const qText = (lang === 'gu') ? 'આપ સાયક્લોન ડસ્ટ કલેક્ટર સાથે મશીન મેળવવા માંગો છો કે સ્ટાન્ડર્ડ?' :
                           (lang === 'hi') ? 'क्या आप साइक्लोन डस्ट कलेक्टर के साथ मशीन चाहते हैं या साधारण?' :
@@ -1525,6 +1526,16 @@ function syncLeadToOdoo(phone, leadData) {
                         user_id: assignedRep.id,
                         description: `Assigned Sales Executive: ${assignedRep.name} (${assignedRep.phone})\nCategory: ${leadData.categoryEn || leadData.category || ''}\nType: ${leadData.typeEn || leadData.type || ''}\nCapacity: ${leadData.hp || ''}\nState: ${leadData.state || ''}\nLanguage: ${leadData.lang || ''}\nSource: WhatsApp AI Interactive Agent`
                     };
+
+                    if (leadData.leadId) {
+                        models.methodCall('execute_kw', [ODOO_DB, uid, ODOO_PASS, 'crm.lead', 'write', [[leadData.leadId], leadRecord]], (writeErr, success) => {
+                            if (!writeErr) {
+                                console.log(`Successfully updated Odoo lead ID: ${leadData.leadId} under rep: ${assignedRep.name}`);
+                            }
+                            resolve(true);
+                        });
+                        return;
+                    }
 
                     models.methodCall('execute_kw', [ODOO_DB, uid, ODOO_PASS, 'crm.lead', 'create', [leadRecord]], (leadErr, leadId) => {
                         if (!leadErr) {
