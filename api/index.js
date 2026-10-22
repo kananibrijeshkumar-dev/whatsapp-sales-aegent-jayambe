@@ -607,26 +607,40 @@ function getNextRepFromOdoo() {
 }
 
 // Helper: Get next fair sequential round-robin salesperson across all 9 members (1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 1)
+// Guaranteed strict 1-by-1 sequential rotation via database tracker:
+// Anilbhai (0) -> Ankitbhai (1) -> Hemali (2) -> Lata (3) -> Mansi (4) -> Mukeshbhai (5) -> Priyanshi (6) -> Ritu (7) -> Siya (8) -> Anilbhai (0)...
 async function getNextFairRoundRobinRep() {
     if (supabase) {
         try {
             const { data } = await supabase
-                .from('whatsapp_customers')
-                .select('name')
-                .order('last_message', { ascending: false })
-                .limit(10);
-            for (const row of (data || [])) {
-                const m = (row.name || '').match(/\[(.*?)\]/);
-                if (m && m[1]) {
-                    const idx = SALES_TEAM.findIndex(t => t.name.toLowerCase() === m[1].toLowerCase());
-                    if (idx !== -1) {
-                        const next = (idx + 1) % SALES_TEAM.length;
-                        return SALES_TEAM[next];
-                    }
+                .from("whatsapp_customers")
+                .select("state")
+                .eq("phone", "__ROTATION_TRACKER__")
+                .limit(1);
+
+            let lastIdx = -1;
+            if (data && data.length > 0 && data[0].state !== undefined && data[0].state !== null) {
+                lastIdx = parseInt(data[0].state);
+                if (isNaN(lastIdx) || lastIdx < 0 || lastIdx >= SALES_TEAM.length) {
+                    lastIdx = -1;
                 }
             }
+
+            const nextIdx = (lastIdx + 1) % SALES_TEAM.length;
+            const rep = SALES_TEAM[nextIdx];
+
+            // Immediately save next rotation index so next customer gets the NEXT rep in order
+            await supabase.from("whatsapp_customers").upsert([{
+                phone: "__ROTATION_TRACKER__",
+                name: "NEXT_REP: " + rep.name,
+                state: String(nextIdx),
+                last_message: new Date().toISOString()
+            }], { onConflict: "phone" });
+
+            console.log("[STRICT 1-BY-1 ROTATION] Lead #" + (nextIdx + 1) + " assigned to: " + rep.name + " (Index " + nextIdx + "/" + SALES_TEAM.length + ")");
+            return rep;
         } catch (e) {
-            console.error('Fair round-robin lookup error:', e.message);
+            console.error("Fair round-robin tracker error:", e.message);
         }
     }
     const fbIdx = Math.floor(Date.now() / 1000) % SALES_TEAM.length;
@@ -1505,8 +1519,11 @@ function syncLeadToOdoo(phone, leadData) {
 
                 // If customer ALREADY has an assigned salesperson, ALWAYS preserve them permanently!
                 let assignedRep = null;
-                if (leadData.assignedRep && leadData.assignedRepPhone) {
+                if (leadData.assignedRep) {
                     assignedRep = SALES_TEAM.find(m => m.name.toLowerCase() === leadData.assignedRep.toLowerCase());
+                }
+                if (!assignedRep && leadData.assignedRepPhone) {
+                    assignedRep = SALES_TEAM.find(m => m.phone === leadData.assignedRepPhone);
                 }
 
                 if (assignedRep) {
