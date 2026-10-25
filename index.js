@@ -484,6 +484,7 @@ async function saveCustomerState(phone, state) {
             await supabase.from('whatsapp_customers').upsert([{
                 phone: phone,
                 name: displayName,
+                assigned_salesperson: repName,
                 City: cleanCity || 'Pending',
                 state: stateSummary,
                 last_message: new Date().toISOString()
@@ -1617,6 +1618,7 @@ async function syncLeadToSupabase(phone, leadData) {
         await supabase.from('whatsapp_customers').upsert([{
             phone: phone,
             name: leadData.name ? `${leadData.name} [${assignedName}]` : `New Lead [${assignedName}]`,
+            assigned_salesperson: assignedName,
             City: leadData.city || 'Pending',
             state: `${leadData.city || 'India'}, ${leadData.state || 'India'} (${leadData.hp || '20 HP'}) | IST: ${istTime}`,
             last_message: new Date().toISOString()
