@@ -607,12 +607,26 @@ function getNextRepFromOdoo() {
     });
 }
 
-// Helper: Get next fair sequential round-robin salesperson across all 9 members (1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 1)
-// Guaranteed strict 1-by-1 sequential rotation via database tracker:
-// Anilbhai (0) -> Ankitbhai (1) -> Hemali (2) -> Lata (3) -> Mansi (4) -> Mukeshbhai (5) -> Priyanshi (6) -> Ritu (7) -> Siya (8) -> Anilbhai (0)...
+// Helper: Get next fair sequential round-robin salesperson across active members (respecting is_active in Supabase)
 async function getNextFairRoundRobinRep() {
+    let currentTeam = SALES_TEAM;
     if (supabase) {
         try {
+            // Read active members dynamically from Supabase sales_team table
+            const { data: activeRoster } = await supabase
+                .from('sales_team')
+                .select('name, display_order, is_active')
+                .eq('is_active', true)
+                .order('display_order');
+
+            if (activeRoster && activeRoster.length > 0) {
+                const activeNames = activeRoster.map(r => r.name.toLowerCase());
+                const filtered = SALES_TEAM.filter(m => activeNames.includes(m.name.toLowerCase()));
+                if (filtered.length > 0) {
+                    currentTeam = filtered;
+                }
+            }
+
             const { data } = await supabase
                 .from("whatsapp_customers")
                 .select("state")
@@ -622,15 +636,15 @@ async function getNextFairRoundRobinRep() {
             let lastIdx = -1;
             if (data && data.length > 0 && data[0].state !== undefined && data[0].state !== null) {
                 lastIdx = parseInt(data[0].state);
-                if (isNaN(lastIdx) || lastIdx < 0 || lastIdx >= SALES_TEAM.length) {
+                if (isNaN(lastIdx) || lastIdx < 0 || lastIdx >= currentTeam.length) {
                     lastIdx = -1;
                 }
             }
 
-            const nextIdx = (lastIdx + 1) % SALES_TEAM.length;
-            const rep = SALES_TEAM[nextIdx];
+            const nextIdx = (lastIdx + 1) % currentTeam.length;
+            const rep = currentTeam[nextIdx];
 
-            // Immediately save next rotation index so next customer gets the NEXT rep in order
+            // Immediately save next rotation index so next customer gets the NEXT active rep in order
             await supabase.from("whatsapp_customers").upsert([{
                 phone: "__ROTATION_TRACKER__",
                 name: "NEXT_REP: " + rep.name,
@@ -638,14 +652,14 @@ async function getNextFairRoundRobinRep() {
                 last_message: new Date().toISOString()
             }], { onConflict: "phone" });
 
-            console.log("[STRICT 1-BY-1 ROTATION] Lead #" + (nextIdx + 1) + " assigned to: " + rep.name + " (Index " + nextIdx + "/" + SALES_TEAM.length + ")");
+            console.log("[STRICT 1-BY-1 ROTATION] Lead #" + (nextIdx + 1) + " assigned to: " + rep.name + " (Active Index " + nextIdx + "/" + currentTeam.length + ")");
             return rep;
         } catch (e) {
             console.error("Fair round-robin tracker error:", e.message);
         }
     }
-    const fbIdx = Math.floor(Date.now() / 1000) % SALES_TEAM.length;
-    return SALES_TEAM[fbIdx];
+    const fbIdx = Math.floor(Date.now() / 1000) % currentTeam.length;
+    return currentTeam[fbIdx];
 }
 
 // Helper: Assign Permanent Salesperson to Customer Phone (Consistent & Deterministic)
@@ -890,6 +904,111 @@ app.post('/api/website-lead', async (req, res) => {
     }
 });
 
+// Helper: Handle staff or admin requesting missed leads via WhatsApp text (e.g. typing "leads")
+async function handleStaffLeadRequest(replyToPhone, repName, isAdmin) {
+    if (!supabase) return;
+    try {
+        let query = supabase
+            .from('crm_vs_bot_report')
+            .select('*')
+            .eq('reached_crm', false)
+            .order('bot_last_message', { ascending: false })
+            .limit(5);
+
+        if (repName && !isAdmin) {
+            query = query.eq('bot_salesperson', repName);
+        }
+
+        const { data: leads, error } = await query;
+        if (error || !leads || leads.length === 0) {
+            await sendWhatsAppText(replyToPhone, `✅ नमस्ते ${repName || 'सर'}! आपके पास इस समय कोई पेंडिंग मिस्ड लीड्स नहीं हैं। सभी लीड्स पर काम हो चुका है! 😊`);
+            return;
+        }
+
+        let body = `🏭 *जय श्री अम्बे फूड मशीनरी — आपकी मिस्ड लीड्स* 🏭\n━━━━━━━━━━━━━━━━━━━━\nनमस्ते ${repName || 'सर'}! यहाँ आपकी 5 पेंडिंग कस्टमर लीड्स हैं जो CRM में नहीं पहुँची थीं:\n\n`;
+        leads.forEach((l, idx) => {
+            const num = idx + 1;
+            const p = l.phone.startsWith('+') ? l.phone : `+${l.phone}`;
+            const name = l.customer_name || 'Customer';
+            const city = (l.city && l.city !== 'Pending') ? l.city : 'Location not specified';
+            const req = l.bot_requirement || l.bot_stage || 'Pulverizer / Atta Mill';
+            const d = new Date(l.bot_last_message);
+            const istTime = d.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true });
+
+            body += `${num}️⃣ *${name}*\n📞 ${p}\n📍 ${city}\n⚙️ विवरण: ${req}\n⏰ समय: ${istTime}\n\n`;
+        });
+        body += `━━━━━━━━━━━━━━━━━━━━\n💡 *टिप:* ऊपर दिए गए मोबाइल नंबर पर सीधा क्लिक करके तुरंत कस्टमर को कॉल करें!`;
+
+        await sendWhatsAppText(replyToPhone, body);
+    } catch (e) {
+        console.error("handleStaffLeadRequest error:", e.message);
+    }
+}
+
+// Helper: Dispatch 5 fresh missed leads to each active sales representative
+async function dispatchMissedLeadsToAllActiveReps() {
+    if (!supabase) return { error: "No Supabase configured" };
+    const results = [];
+    try {
+        const { data: activeRoster } = await supabase
+            .from('sales_team')
+            .select('name, is_active')
+            .eq('is_active', true);
+            
+        const activeNames = (activeRoster && activeRoster.length > 0)
+            ? activeRoster.map(r => r.name.toLowerCase())
+            : SALES_TEAM.map(r => r.name.toLowerCase());
+
+        const targetTeam = SALES_TEAM.filter(m => activeNames.includes(m.name.toLowerCase()));
+
+        for (const rep of targetTeam) {
+            const cleanPhone = rep.phone.replace(/[^0-9]/g, '');
+            const targetWaPhone = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone.slice(-10)}`;
+
+            const { data: leads } = await supabase
+                .from('crm_vs_bot_report')
+                .select('*')
+                .eq('reached_crm', false)
+                .eq('bot_salesperson', rep.name)
+                .order('bot_last_message', { ascending: false })
+                .limit(5);
+
+            if (leads && leads.length > 0) {
+                let body = `🏭 *जय श्री अम्बे फूड मशीनरी — सुबह की फॉलो-अप लीड्स* 🏭\n━━━━━━━━━━━━━━━━━━━━\nसुप्रभात *${rep.hi || rep.name}*! 🙏\nयहाँ आपकी 5 ताजा मिस्ड लीड्स हैं, कृपया तुरंत कॉल करके कोटेशन शेयर करें:\n\n`;
+                leads.forEach((l, idx) => {
+                    const num = idx + 1;
+                    const p = l.phone.startsWith('+') ? l.phone : `+${l.phone}`;
+                    const name = l.customer_name || 'Customer';
+                    const city = (l.city && l.city !== 'Pending') ? l.city : 'Not specified';
+                    const req = l.bot_requirement || l.bot_stage || 'Pulverizer';
+                    body += `${num}️⃣ *${name}*\n📞 ${p}\n📍 ${city}\n⚙️ मशीन: ${req}\n\n`;
+                });
+                body += `━━━━━━━━━━━━━━━━━━━━\n📞 *नंबर पर टैप करके तुरंत कॉल करें!*`;
+
+                await sendWhatsAppText(targetWaPhone, body);
+                results.push({ rep: rep.name, phone: targetWaPhone, leadsCount: leads.length, status: "sent" });
+                await new Promise(r => setTimeout(r, 1000));
+            } else {
+                results.push({ rep: rep.name, phone: targetWaPhone, leadsCount: 0, status: "no_pending" });
+            }
+        }
+        return { success: true, count: results.length, dispatched: results };
+    } catch (e) {
+        console.error("dispatchMissedLeads error:", e.message);
+        return { error: e.message };
+    }
+}
+
+app.get('/api/dispatch-missed-leads', async (req, res) => {
+    const result = await dispatchMissedLeadsToAllActiveReps();
+    res.json(result);
+});
+
+app.post('/api/dispatch-missed-leads', async (req, res) => {
+    const result = await dispatchMissedLeadsToAllActiveReps();
+    res.json(result);
+});
+
 app.post('/webhook', async (req, res) => {
     try {
         const body = req.body;
@@ -942,6 +1061,22 @@ app.post('/webhook', async (req, res) => {
 
         const lower = incomingText.toLowerCase();
         let userState = await getCustomerState(fromPhone);
+
+        // STAFF / ADMIN LEAD REQUEST (e.g. typing "leads", "leed", "pending", "followup", "missed", "मिस्ड लीड्स")
+        const cleanFrom = fromPhone.replace(/[^0-9]/g, '');
+        const plainFrom = cleanFrom.length > 10 ? cleanFrom.slice(-10) : cleanFrom;
+        const isLeadCommand = /^(leads|lead|leed|pending|followup|follow up|missed|मिस्ड|લીડ્સ|લિડ્સ)/i.test(incomingText.trim());
+        const matchedStaff = SALES_TEAM.find(m => {
+            const p = m.phone.replace(/[^0-9]/g, '');
+            return p.endsWith(plainFrom);
+        });
+        const isAdmin = ['919898860145', '9898860145', '917201890711', '7201890711'].some(adminP => cleanFrom.endsWith(adminP.slice(-10)));
+
+        if (isLeadCommand && (matchedStaff || isAdmin)) {
+            const targetRepName = matchedStaff ? matchedStaff.name : null;
+            await handleStaffLeadRequest(fromPhone, targetRepName, isAdmin);
+            return res.sendStatus(200);
+        }
 
         // ABUSE FILTER: If customer sends abusive, vulgar, or insulting language
         if (isAbusive(incomingText)) {

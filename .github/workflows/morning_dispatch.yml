@@ -1,0 +1,14 @@
+name: Morning Missed Leads Dispatch
+on:
+  schedule:
+    # 04:00 UTC = 09:30 AM IST every morning
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+jobs:
+  dispatch-leads:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch Missed Leads to Active Sales Reps
+        run: |
+          curl -s -X POST https://whatsapp-sales-agent-blond.vercel.app/api/dispatch-missed-leads
