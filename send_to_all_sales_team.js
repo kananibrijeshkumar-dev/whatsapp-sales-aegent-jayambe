@@ -88,23 +88,23 @@ async function run() {
         batch.forEach((l, idx) => {
             const num = idx + 1;
             const p = l.phone.startsWith('+') ? l.phone : `+${l.phone}`;
-            const name = l.customer_name || 'WhatsApp Inquiry';
+            const name = l.customer_name || 'Customer';
             const city = (l.city && l.city !== 'Pending') ? l.city : 'Not specified';
             const req = l.bot_requirement || l.bot_stage || 'Pulverizer';
             const d = new Date(l.bot_last_message);
             const istTime = d.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true });
 
-            leadsText += `${num}️⃣ *${name}*\n📞 ${p}\n📍 ${city}\n⚙️ ${req}\n⏰ ${istTime}\n\n`;
+            leadsText += `${num}️⃣ *${name}*\n📞 ${p}\n📍 ${city}\n⚙️ Requirement: ${req}\n⏰ Time: ${istTime}\n\n`;
         });
 
-        const messageBody = `🏭 *जय श्री अम्बे फूड मशीनरी — आपकी पेंडिंग मिस्ड लीड्स* 🏭
+        const messageBody = `🏭 *Jay Shree Ambe Food Machinery — Yesterday's Missed Leads* 🏭
 ━━━━━━━━━━━━━━━━━━━━
-नमस्ते *${rep.name}*! 🙏
-यहाँ आपकी हाल ही की **${batch.length} ताजा मिस्ड लीड्स** हैं (कुल पेंडिंग: ${repLeads.length}):
+Hello *${rep.name}*! 🙏
+Here are your **${batch.length} pending missed leads** from yesterday (*${yesterdayStr}*) (Total: ${repLeads.length}):
 
 ${leadsText}━━━━━━━━━━━━━━━━━━━━
-💡 *कॉलिंग निर्देश:*
-ऊपर दिए गए मोबाइल नंबरों पर सीधा टैप करके तुरंत कॉल लगाएं और कोटेशन शेयर करें!`;
+💡 *Calling Instructions:*
+Tap directly on the phone numbers above to call immediately and share quotation/catalogue on WhatsApp!`;
 
         console.log(`Sending to ${rep.name} (${rep.phone})...`);
         const result = await sendWhatsApp(rep.phone, messageBody);

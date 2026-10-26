@@ -943,11 +943,11 @@ async function handleStaffLeadRequest(replyToPhone, repName, isAdmin) {
 
         const { data: leads, error } = await query;
         if (error || !leads || leads.length === 0) {
-            await sendWhatsAppText(replyToPhone, `✅ नमस्ते ${repName || 'सर'}! कल (${yesterdayStr}) की कोई पेंडिंग मिस्ड लीड्स नहीं हैं। कल की सभी लीड्स पर काम हो चुका है! 😊`);
+            await sendWhatsAppText(replyToPhone, `✅ Hello ${repName || 'Sir'}! There are no pending missed leads from yesterday (${yesterdayStr}). All yesterday's leads are attended! 😊`);
             return;
         }
 
-        let body = `🏭 *जय श्री अम्बे फूड मशीनरी — कल (${yesterdayStr}) की मिस्ड लीड्स* 🏭\n━━━━━━━━━━━━━━━━━━━━\nनमस्ते ${repName || 'सर'}! यहाँ कल की कुल *${leads.length} मिस्ड लीड्स* हैं जो CRM में नहीं पहुँची थीं:\n\n`;
+        let body = `🏭 *Jay Shree Ambe Food Machinery — Yesterday's Missed Leads (${yesterdayStr})* 🏭\n━━━━━━━━━━━━━━━━━━━━\nHello ${repName || 'Sir'}! Here are your total *${leads.length} missed leads* from yesterday that did not reach CRM:\n\n`;
         leads.forEach((l, idx) => {
             const num = idx + 1;
             const p = l.phone.startsWith('+') ? l.phone : `+${l.phone}`;
@@ -957,9 +957,9 @@ async function handleStaffLeadRequest(replyToPhone, repName, isAdmin) {
             const d = new Date(l.bot_last_message);
             const istTime = d.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true });
 
-            body += `${num}️⃣ *${name}*\n📞 ${p}\n📍 ${city}\n⚙️ विवरण: ${req}\n⏰ समय: ${istTime}\n\n`;
+            body += `${num}️⃣ *${name}*\n📞 ${p}\n📍 ${city}\n⚙️ Requirement: ${req}\n⏰ Time: ${istTime}\n\n`;
         });
-        body += `━━━━━━━━━━━━━━━━━━━━\n💡 *टिप:* ऊपर दिए गए मोबाइल नंबर पर सीधा क्लिक करके तुरंत कस्टमर को कॉल करें!`;
+        body += `━━━━━━━━━━━━━━━━━━━━\n💡 *Action:* Tap directly on the phone numbers to call immediately!`;
 
         await sendWhatsAppText(replyToPhone, body);
     } catch (e) {
@@ -999,7 +999,7 @@ async function dispatchMissedLeadsToAllActiveReps() {
                 .order('bot_last_message', { ascending: false });
 
             if (leads && leads.length > 0) {
-                let body = `🏭 *जय श्री अम्बे फूड मशीनरी — कल (${yesterdayStr}) की फॉलो-अप लीड्स* 🏭\n━━━━━━━━━━━━━━━━━━━━\nसुप्रभात *${rep.hi || rep.name}*! 🙏\nयहाँ कल की आपकी कुल *${leads.length} मिस्ड लीड्स* हैं जो CRM में नहीं पहुँची थीं, कृपया तुरंत कॉल करके कोटेशन शेयर करें:\n\n`;
+                let body = `🏭 *Jay Shree Ambe Food Machinery — Yesterday's Missed Leads (${yesterdayStr})* 🏭\n━━━━━━━━━━━━━━━━━━━━\nGood morning *${rep.name}*! 🙏\nHere are your total *${leads.length} missed leads* from yesterday that did not reach CRM. Please call them immediately and share quotation/catalogue:\n\n`;
                 leads.forEach((l, idx) => {
                     const num = idx + 1;
                     const p = l.phone.startsWith('+') ? l.phone : `+${l.phone}`;
@@ -1008,9 +1008,9 @@ async function dispatchMissedLeadsToAllActiveReps() {
                     const req = l.bot_requirement || l.bot_stage || 'Pulverizer';
                     const d = new Date(l.bot_last_message);
                     const istTime = d.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true });
-                    body += `${num}️⃣ *${name}*\n📞 ${p}\n📍 ${city}\n⚙️ मशीन: ${req}\n⏰ समय: ${istTime}\n\n`;
+                    body += `${num}️⃣ *${name}*\n📞 ${p}\n📍 ${city}\n⚙️ Requirement: ${req}\n⏰ Time: ${istTime}\n\n`;
                 });
-                body += `━━━━━━━━━━━━━━━━━━━━\n📞 *नंबर पर टैप करके तुरंत कॉल करें!*`;
+                body += `━━━━━━━━━━━━━━━━━━━━\n💡 *Action:* Tap directly on the phone numbers to call immediately!`;
 
                 await sendWhatsAppText(targetWaPhone, body);
                 results.push({ rep: rep.name, phone: targetWaPhone, leadsCount: leads.length, status: "sent" });
