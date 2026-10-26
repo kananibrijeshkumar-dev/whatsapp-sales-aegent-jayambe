@@ -904,16 +904,38 @@ app.post('/api/website-lead', async (req, res) => {
     }
 });
 
+// Helper: Calculate Yesterday Date Range in IST (Indian Standard Time)
+function getYesterdayDateRangeIST() {
+    const now = new Date();
+    const istOffsetMs = 5.5 * 60 * 60 * 1000;
+    const istNow = new Date(now.getTime() + istOffsetMs);
+    const istYesterday = new Date(istNow);
+    istYesterday.setUTCDate(istYesterday.getUTCDate() - 1);
+    
+    const yYear = istYesterday.getUTCFullYear();
+    const yMonth = String(istYesterday.getUTCMonth() + 1).padStart(2, '0');
+    const yDay = String(istYesterday.getUTCDate()).padStart(2, '0');
+    const yesterdayStr = `${yDay}/${yMonth}/${yYear}`;
+    
+    const startUtc = new Date(Date.UTC(yYear, istYesterday.getUTCMonth(), istYesterday.getUTCDate(), 0, 0, 0) - istOffsetMs).toISOString();
+    const endUtc = new Date(Date.UTC(yYear, istYesterday.getUTCMonth(), istYesterday.getUTCDate(), 23, 59, 59, 999) - istOffsetMs).toISOString();
+    
+    return { yesterdayStr, startUtc, endUtc };
+}
+
 // Helper: Handle staff or admin requesting missed leads via WhatsApp text (e.g. typing "leads")
+// Strictly sends YESTERDAY'S missed leads only - NEVER today's leads
 async function handleStaffLeadRequest(replyToPhone, repName, isAdmin) {
     if (!supabase) return;
     try {
+        const { yesterdayStr, startUtc, endUtc } = getYesterdayDateRangeIST();
         let query = supabase
             .from('crm_vs_bot_report')
             .select('*')
             .eq('reached_crm', false)
-            .order('bot_last_message', { ascending: false })
-            .limit(5);
+            .gte('bot_last_message', startUtc)
+            .lte('bot_last_message', endUtc)
+            .order('bot_last_message', { ascending: false });
 
         if (repName && !isAdmin) {
             query = query.eq('bot_salesperson', repName);
@@ -921,19 +943,19 @@ async function handleStaffLeadRequest(replyToPhone, repName, isAdmin) {
 
         const { data: leads, error } = await query;
         if (error || !leads || leads.length === 0) {
-            await sendWhatsAppText(replyToPhone, `✅ नमस्ते ${repName || 'सर'}! आपके पास इस समय कोई पेंडिंग मिस्ड लीड्स नहीं हैं। सभी लीड्स पर काम हो चुका है! 😊`);
+            await sendWhatsAppText(replyToPhone, `✅ नमस्ते ${repName || 'सर'}! कल (${yesterdayStr}) की कोई पेंडिंग मिस्ड लीड्स नहीं हैं। कल की सभी लीड्स पर काम हो चुका है! 😊`);
             return;
         }
 
-        let body = `🏭 *जय श्री अम्बे फूड मशीनरी — आपकी मिस्ड लीड्स* 🏭\n━━━━━━━━━━━━━━━━━━━━\nनमस्ते ${repName || 'सर'}! यहाँ आपकी 5 पेंडिंग कस्टमर लीड्स हैं जो CRM में नहीं पहुँची थीं:\n\n`;
+        let body = `🏭 *जय श्री अम्बे फूड मशीनरी — कल (${yesterdayStr}) की मिस्ड लीड्स* 🏭\n━━━━━━━━━━━━━━━━━━━━\nनमस्ते ${repName || 'सर'}! यहाँ कल की कुल *${leads.length} मिस्ड लीड्स* हैं जो CRM में नहीं पहुँची थीं:\n\n`;
         leads.forEach((l, idx) => {
             const num = idx + 1;
             const p = l.phone.startsWith('+') ? l.phone : `+${l.phone}`;
             const name = l.customer_name || 'Customer';
-            const city = (l.city && l.city !== 'Pending') ? l.city : 'Location not specified';
+            const city = (l.city && l.city !== 'Pending') ? l.city : 'Not specified';
             const req = l.bot_requirement || l.bot_stage || 'Pulverizer / Atta Mill';
             const d = new Date(l.bot_last_message);
-            const istTime = d.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true });
+            const istTime = d.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true });
 
             body += `${num}️⃣ *${name}*\n📞 ${p}\n📍 ${city}\n⚙️ विवरण: ${req}\n⏰ समय: ${istTime}\n\n`;
         });
@@ -945,11 +967,13 @@ async function handleStaffLeadRequest(replyToPhone, repName, isAdmin) {
     }
 }
 
-// Helper: Dispatch 5 fresh missed leads to each active sales representative
+// Helper: Dispatch YESTERDAY'S missed leads to each active sales representative (Zero today's leads)
 async function dispatchMissedLeadsToAllActiveReps() {
     if (!supabase) return { error: "No Supabase configured" };
     const results = [];
     try {
+        const { yesterdayStr, startUtc, endUtc } = getYesterdayDateRangeIST();
+        
         const { data: activeRoster } = await supabase
             .from('sales_team')
             .select('name, is_active')
@@ -970,18 +994,21 @@ async function dispatchMissedLeadsToAllActiveReps() {
                 .select('*')
                 .eq('reached_crm', false)
                 .eq('bot_salesperson', rep.name)
-                .order('bot_last_message', { ascending: false })
-                .limit(5);
+                .gte('bot_last_message', startUtc)
+                .lte('bot_last_message', endUtc)
+                .order('bot_last_message', { ascending: false });
 
             if (leads && leads.length > 0) {
-                let body = `🏭 *जय श्री अम्बे फूड मशीनरी — सुबह की फॉलो-अप लीड्स* 🏭\n━━━━━━━━━━━━━━━━━━━━\nसुप्रभात *${rep.hi || rep.name}*! 🙏\nयहाँ आपकी 5 ताजा मिस्ड लीड्स हैं, कृपया तुरंत कॉल करके कोटेशन शेयर करें:\n\n`;
+                let body = `🏭 *जय श्री अम्बे फूड मशीनरी — कल (${yesterdayStr}) की फॉलो-अप लीड्स* 🏭\n━━━━━━━━━━━━━━━━━━━━\nसुप्रभात *${rep.hi || rep.name}*! 🙏\nयहाँ कल की आपकी कुल *${leads.length} मिस्ड लीड्स* हैं जो CRM में नहीं पहुँची थीं, कृपया तुरंत कॉल करके कोटेशन शेयर करें:\n\n`;
                 leads.forEach((l, idx) => {
                     const num = idx + 1;
                     const p = l.phone.startsWith('+') ? l.phone : `+${l.phone}`;
                     const name = l.customer_name || 'Customer';
                     const city = (l.city && l.city !== 'Pending') ? l.city : 'Not specified';
                     const req = l.bot_requirement || l.bot_stage || 'Pulverizer';
-                    body += `${num}️⃣ *${name}*\n📞 ${p}\n📍 ${city}\n⚙️ मशीन: ${req}\n\n`;
+                    const d = new Date(l.bot_last_message);
+                    const istTime = d.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true });
+                    body += `${num}️⃣ *${name}*\n📞 ${p}\n📍 ${city}\n⚙️ मशीन: ${req}\n⏰ समय: ${istTime}\n\n`;
                 });
                 body += `━━━━━━━━━━━━━━━━━━━━\n📞 *नंबर पर टैप करके तुरंत कॉल करें!*`;
 
@@ -992,7 +1019,7 @@ async function dispatchMissedLeadsToAllActiveReps() {
                 results.push({ rep: rep.name, phone: targetWaPhone, leadsCount: 0, status: "no_pending" });
             }
         }
-        return { success: true, count: results.length, dispatched: results };
+        return { success: true, yesterday: yesterdayStr, count: results.length, dispatched: results };
     } catch (e) {
         console.error("dispatchMissedLeads error:", e.message);
         return { error: e.message };
