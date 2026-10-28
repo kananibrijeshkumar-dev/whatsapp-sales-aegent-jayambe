@@ -9,6 +9,21 @@ jobs:
   dispatch-leads:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Sync Odoo CRM vs WhatsApp Leads into Supabase
+        run: python3 crm_report.py
+
       - name: Dispatch Missed Leads to Active Sales Reps
-        run: |
-          curl -s -X POST https://whatsapp-sales-agent-blond.vercel.app/api/dispatch-missed-leads
+        run: node send_to_all_sales_team.js

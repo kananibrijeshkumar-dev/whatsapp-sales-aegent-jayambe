@@ -941,14 +941,40 @@ async function handleStaffLeadRequest(replyToPhone, repName, isAdmin) {
             query = query.eq('bot_salesperson', repName);
         }
 
-        const { data: leads, error } = await query;
-        if (error || !leads || leads.length === 0) {
+        let { data: leads, error } = await query;
+
+        // Resilient Fallback: If crm_vs_bot_report has 0 leads, query whatsapp_customers directly
+        if (!leads || leads.length === 0) {
+            let custQuery = supabase
+                .from('whatsapp_customers')
+                .select('*')
+                .gte('last_message', startUtc)
+                .lte('last_message', endUtc)
+                .not('phone', 'like', '\\_\\_%')
+                .order('last_message', { ascending: false });
+
+            if (repName && !isAdmin) {
+                custQuery = custQuery.eq('assigned_salesperson', repName);
+            }
+            const { data: custLeads } = await custQuery;
+            if (custLeads && custLeads.length > 0) {
+                leads = custLeads.map(c => ({
+                    phone: c.phone,
+                    customer_name: (c.name || '').replace(/\s*\[.*?\]/, '').trim() || 'WhatsApp Customer',
+                    city: c.City || 'Pending',
+                    bot_requirement: c.state || 'Pulverizer Inquiry',
+                    bot_last_message: c.last_message
+                }));
+            }
+        }
+
+        if (!leads || leads.length === 0) {
             await sendWhatsAppText(replyToPhone, `✅ Hello ${repName || 'Sir'}! There are no pending missed leads from yesterday (${yesterdayStr}). All yesterday's leads are attended! 😊`);
             return;
         }
 
-        let body = `🏭 *Jay Shree Ambe Food Machinery — Yesterday's Missed Leads (${yesterdayStr})* 🏭\n━━━━━━━━━━━━━━━━━━━━\nHello ${repName || 'Sir'}! Here are your total *${leads.length} missed leads* from yesterday that did not reach CRM:\n\n`;
-        leads.forEach((l, idx) => {
+        let body = `🏭 *Jay Shree Ambe Food Machinery — Yesterday's Missed Leads (${yesterdayStr})* 🏭\n━━━━━━━━━━━━━━━━━━━━\nHello ${repName || 'Sir'}! Here are your total *${leads.length} missed leads* from yesterday:\n\n`;
+        leads.slice(0, 15).forEach((l, idx) => {
             const num = idx + 1;
             const p = l.phone.startsWith('+') ? l.phone : `+${l.phone}`;
             const name = l.customer_name || 'Customer';
@@ -989,7 +1015,7 @@ async function dispatchMissedLeadsToAllActiveReps() {
             const cleanPhone = rep.phone.replace(/[^0-9]/g, '');
             const targetWaPhone = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone.slice(-10)}`;
 
-            const { data: leads } = await supabase
+            let { data: leads } = await supabase
                 .from('crm_vs_bot_report')
                 .select('*')
                 .eq('reached_crm', false)
@@ -998,9 +1024,31 @@ async function dispatchMissedLeadsToAllActiveReps() {
                 .lte('bot_last_message', endUtc)
                 .order('bot_last_message', { ascending: false });
 
+            // Resilient Fallback to whatsapp_customers if crm_vs_bot_report is empty
+            if (!leads || leads.length === 0) {
+                const { data: custLeads } = await supabase
+                    .from('whatsapp_customers')
+                    .select('*')
+                    .eq('assigned_salesperson', rep.name)
+                    .gte('last_message', startUtc)
+                    .lte('last_message', endUtc)
+                    .not('phone', 'like', '\\_\\_%')
+                    .order('last_message', { ascending: false });
+
+                if (custLeads && custLeads.length > 0) {
+                    leads = custLeads.map(c => ({
+                        phone: c.phone,
+                        customer_name: (c.name || '').replace(/\s*\[.*?\]/, '').trim() || 'WhatsApp Customer',
+                        city: c.City || 'Pending',
+                        bot_requirement: c.state || 'Pulverizer Inquiry',
+                        bot_last_message: c.last_message
+                    }));
+                }
+            }
+
             if (leads && leads.length > 0) {
                 let body = `🏭 *Jay Shree Ambe Food Machinery — Yesterday's Missed Leads (${yesterdayStr})* 🏭\n━━━━━━━━━━━━━━━━━━━━\nGood morning *${rep.name}*! 🙏\nHere are your total *${leads.length} missed leads* from yesterday that did not reach CRM. Please call them immediately and share quotation/catalogue:\n\n`;
-                leads.forEach((l, idx) => {
+                leads.slice(0, 15).forEach((l, idx) => {
                     const num = idx + 1;
                     const p = l.phone.startsWith('+') ? l.phone : `+${l.phone}`;
                     const name = l.customer_name || 'Customer';
@@ -1019,7 +1067,21 @@ async function dispatchMissedLeadsToAllActiveReps() {
                 results.push({ rep: rep.name, phone: targetWaPhone, leadsCount: 0, status: "no_pending" });
             }
         }
-        return { success: true, yesterday: yesterdayStr, count: results.length, dispatched: results };
+
+        // Notify Admin
+        const totalDispatched = results.filter(r => r.status === 'sent').reduce((acc, r) => acc + r.leadsCount, 0);
+        let adminSummary = `🏭 *Jay Shree Ambe Food Machinery — Morning Missed Leads Summary (${yesterdayStr})* 🏭\n━━━━━━━━━━━━━━━━━━━━\nMorning dispatch finished:\n\n`;
+        results.forEach(r => {
+            const icon = r.status === 'sent' ? '✅' : '⚪';
+            adminSummary += `👤 *${r.rep}:* ${r.leadsCount} leads ${icon}\n`;
+        });
+        adminSummary += `━━━━━━━━━━━━━━━━━━━━\n📊 *Total Leads Dispatched:* ${totalDispatched}\n💡 Click-to-call links sent to all reps!`;
+        const adminPhones = ['919898860145', '917201890711'];
+        for (const ap of adminPhones) {
+            await sendWhatsAppText(ap, adminSummary);
+        }
+
+        return { success: true, yesterday: yesterdayStr, count: results.length, totalLeads: totalDispatched, dispatched: results };
     } catch (e) {
         console.error("dispatchMissedLeads error:", e.message);
         return { error: e.message };

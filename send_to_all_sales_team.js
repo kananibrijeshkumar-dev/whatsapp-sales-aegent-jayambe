@@ -71,7 +71,22 @@ async function run() {
 
     const summaryReport = [];
 
-    for (const rep of SALES_TEAM) {
+    // Fetch active roster from Supabase
+    let targetTeam = SALES_TEAM;
+    try {
+        const rosterRes = await fetch(`${SUPABASE_URL}/rest/v1/sales_team?is_active=eq.true&select=name`, {
+            headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` }
+        });
+        const activeRoster = await rosterRes.json();
+        if (Array.isArray(activeRoster) && activeRoster.length > 0) {
+            const activeNames = activeRoster.map(r => r.name.toLowerCase());
+            targetTeam = SALES_TEAM.filter(m => activeNames.includes(m.name.toLowerCase()));
+        }
+    } catch (e) {
+        console.error("Could not fetch active roster, defaulting to full team:", e.message);
+    }
+
+    for (const rep of targetTeam) {
         const repLeads = allLeads.filter(l => (l.bot_salesperson || '').toLowerCase() === rep.name.toLowerCase());
         console.log(`\n--------------------------------------------`);
         console.log(`Processing ${rep.name} (${rep.phone}): ${repLeads.length} missed leads`);
@@ -122,6 +137,25 @@ Tap directly on the phone numbers above to call immediately and share quotation/
 
     console.log("\n================ SUMMARY REPORT ================");
     console.table(summaryReport);
+
+    // Send Master Dispatch Summary to Admin
+    const deliveredCount = summaryReport.filter(s => s.status === 'DELIVERED').reduce((acc, s) => acc + (s.sentLeads || 0), 0);
+    let adminSummary = `🏭 *Jay Shree Ambe Food Machinery — Morning Missed Leads Summary (${yesterdayStr})* 🏭\n━━━━━━━━━━━━━━━━━━━━\nMissed leads morning dispatch completed:\n\n`;
+    summaryReport.forEach(s => {
+        const icon = s.status === 'DELIVERED' ? '✅' : s.total === 0 ? '⚪' : '⚠️';
+        adminSummary += `👤 *${s.rep}:* ${s.total} leads (${s.status}) ${icon}\n`;
+    });
+    adminSummary += `━━━━━━━━━━━━━━━━━━━━\n📊 *Total Leads Dispatched:* ${deliveredCount}\n💡 All reps received customer phone numbers with direct click-to-call links!`;
+
+    const adminPhones = ['919898860145', '917201890711'];
+    for (const aPhone of adminPhones) {
+        try {
+            await sendWhatsApp(aPhone, adminSummary);
+            console.log(`Admin summary sent to ${aPhone}`);
+        } catch (err) {
+            console.error(`Admin summary send failed for ${aPhone}:`, err.message);
+        }
+    }
 }
 
 run();
