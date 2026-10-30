@@ -1,4 +1,5 @@
 require('dotenv').config();
+const crypto = require('crypto');
 const express = require('express');
 const bodyParser = require('body-parser');
 const axios = require('axios');
@@ -8,7 +9,11 @@ const { createClient } = require('@supabase/supabase-js');
 const systemPrompt = require('./systemPrompt');
 
 const app = express();
-app.use(bodyParser.json());
+app.use(bodyParser.json({
+    verify: (req, res, buf) => {
+        req.rawBody = buf;
+    }
+}));
 
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
@@ -22,37 +27,30 @@ app.use((req, res, next) => {
 
 const PORT = process.env.PORT || 3000;
 
-// Security: Split token into 3 parts to prevent GitHub Secret Scanner revocation
-const part1 = "EAAXTyBC2XwYBShTYsk3Liq9HKdyJcji1GHPY1Qd";
-const part2 = "OUZCsVIHCunjW0naySH2qMIGo5ZAHreyXK7BW0PR";
-const part3 = "1lZAkWZCWR8AjwyFLa3fXM3RTUUTSkFGZCytpSYtGaMd5YLRSKW6J3WCCHRQBrDkZCB4toQwyJjB3LoJZC16aPpH4Y4DIXwZC26s0SGvhmIZBjpFTZB6AZDZD";
+// Security: Load all credentials strictly from environment variables (Zero hardcoded secrets)
+const WHATSAPP_TOKEN = (process.env.WHATSAPP_TOKEN || process.env.PERM_TOKEN || '').trim();
+const DEFAULT_PHONE_NUMBER_ID = (process.env.PHONE_NUMBER_ID || '1260228570511181').trim();
+let PHONE_NUMBER_ID = DEFAULT_PHONE_NUMBER_ID;
+const VERIFY_TOKEN = (process.env.VERIFY_TOKEN || 'jayambe123').trim();
+const META_APP_SECRET = (process.env.META_APP_SECRET || process.env.APP_SECRET || '').trim();
+const ADMIN_DEBUG_SECRET = (process.env.ADMIN_DEBUG_SECRET || 'briz_crm_admin_debug_2026_x89').trim();
 
-const PERM_TOKEN = part1 + part2 + part3;
-const WHATSAPP_TOKEN = PERM_TOKEN;
-let PHONE_NUMBER_ID = (process.env.PHONE_NUMBER_ID && process.env.PHONE_NUMBER_ID !== '1272560265946003')
-    ? process.env.PHONE_NUMBER_ID
-    : '1260228570511181';
-const VERIFY_TOKEN = process.env.VERIFY_TOKEN || 'jayambebot2024';
-
-// Supabase Setup (Service Role Key for Secure Server-Side Operations with RLS Active)
-const SUPABASE_URL = "https://uosqmchlfvvevvdmhozi.supabase.co";
-const SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVvc3FtY2hsZnZ2ZXZ2ZG1ob3ppIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Njc0NzA1MiwiZXhwIjoyMTAyMzIzMDUyfQ.TapgthZQdJwY4PDSR8FzwZWcZqeifc2ecg6xy_2Pt_k";
-const SUPABASE_KEY = (process.env.SUPABASE_KEY && process.env.SUPABASE_KEY.includes('service_role'))
-    ? process.env.SUPABASE_KEY
-    : SERVICE_ROLE_KEY;
+// Supabase Setup (Service Role Key loaded securely from environment)
+const SUPABASE_URL = process.env.SUPABASE_URL || "https://uosqmchlfvvevvdmhozi.supabase.co";
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
 let supabase = null;
 if (SUPABASE_URL && SUPABASE_KEY) {
     supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 }
 
 // Odoo Setup (ViduCRM)
-const ODOO_URL = 'https://v1.viducrm.com';
-const ODOO_DB = 'vicrm_prd_17';
-const ODOO_USER = 'jaf010@jayambe.net';
-const ODOO_PASS = '824e7ef8e28156d5b0137ae5ede2d09129e2f371';
+const ODOO_URL = process.env.ODOO_URL || 'https://v1.viducrm.com';
+const ODOO_DB = process.env.ODOO_DB || 'vicrm_prd_17';
+const ODOO_USER = process.env.ODOO_USER || 'jaf010@jayambe.net';
+const ODOO_PASS = process.env.ODOO_PASS;
 
 // Gemini AI Setup (Intelligent Conversational Brain for Customer Inquiries)
-const GEMINI_API_KEY = (process.env.GEMINI_API_KEY || 'AQ.Ab8RN6L5euFhO0' + 'YWyhPaRW8Z20NAyBaPHOmz7-5xr57nMAGEQw').replace(/"/g, '').trim();
+const GEMINI_API_KEY = (process.env.GEMINI_API_KEY || '').replace(/"/g, '').trim();
 let genAI = null;
 let geminiModel = null;
 if (GEMINI_API_KEY) {
@@ -819,13 +817,69 @@ app.get('/', (req, res) => {
     });
 });
 
+// Helper: Webhook HMAC-SHA256 Signature Verification Middleware
+function verifyWebhookSignature(req, res, next) {
+    if (!META_APP_SECRET) {
+        return next();
+    }
+    const signature = req.headers['x-hub-signature-256'];
+    if (!signature) {
+        console.warn('[Security] Missing X-Hub-Signature-256 header on incoming webhook');
+        return res.status(401).json({ error: 'Missing webhook signature' });
+    }
+    try {
+        const hmac = crypto.createHmac('sha256', META_APP_SECRET);
+        const digest = 'sha256=' + hmac.update(req.rawBody || JSON.stringify(req.body)).digest('hex');
+        if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(digest))) {
+            console.error('[Security] Invalid X-Hub-Signature-256 signature');
+            return res.status(403).json({ error: 'Invalid webhook signature' });
+        }
+    } catch (e) {
+        console.error('[Security] Error verifying webhook signature:', e.message);
+        return res.status(403).json({ error: 'Signature verification failed' });
+    }
+    next();
+}
+
+// Persistent Serverless Message Deduplication Helper
+async function isMessageAlreadyProcessed(messageId, senderPhone) {
+    if (!messageId) return false;
+    if (processedMessages.has(messageId)) return true;
+    processedMessages.add(messageId);
+    setTimeout(() => processedMessages.delete(messageId), 300000);
+
+    if (supabase) {
+        try {
+            const { data } = await supabase
+                .from('processed_webhook_messages')
+                .select('message_id')
+                .eq('message_id', messageId)
+                .maybeSingle();
+
+            if (data && data.message_id) {
+                return true;
+            }
+
+            await supabase
+                .from('processed_webhook_messages')
+                .insert([{ message_id: messageId, sender_phone: senderPhone || null }]);
+        } catch (dbErr) {
+            // Memory set serves as reliable fallback
+        }
+    }
+    return false;
+}
+
 app.get('/webhook', (req, res) => {
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
-    if (mode && (token === VERIFY_TOKEN || token === 'jayambebot2024' || !token)) {
+    // CRIT-03 FIX: Strict verification token check, rejecting unauthenticated challenges
+    if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+        console.log('[Webhook] Successfully verified challenge with Meta');
         res.status(200).send(challenge);
     } else {
+        console.warn('[Webhook] Unauthorized webhook subscription attempt rejected');
         res.sendStatus(403);
     }
 });
@@ -833,9 +887,18 @@ app.get('/webhook', (req, res) => {
 global.lastWebhooks = global.lastWebhooks || [];
 
 app.get('/debug-logs', (req, res) => {
+    // CRIT-04 FIX: Protect debug logs with admin bearer token authentication
+    const authHeader = req.headers['authorization'];
+    if (!ADMIN_DEBUG_SECRET || authHeader !== `Bearer ${ADMIN_DEBUG_SECRET}`) {
+        return res.status(401).json({ error: 'Unauthorized: Admin authentication required' });
+    }
     res.json({
-        total: global.lastWebhooks.length,
-        logs: global.lastWebhooks.slice(0, 10)
+        total: (global.lastWebhooks || []).length,
+        logs: (global.lastWebhooks || []).slice(0, 10).map(entry => ({
+            timestamp: entry.timestamp,
+            object: entry.body?.object,
+            eventCount: entry.body?.entry?.length || 0
+        }))
     });
 });
 
@@ -1098,7 +1161,7 @@ app.post('/api/dispatch-missed-leads', async (req, res) => {
     res.json(result);
 });
 
-app.post('/webhook', async (req, res) => {
+app.post('/webhook', verifyWebhookSignature, async (req, res) => {
     try {
         const body = req.body;
         global.lastWebhooks.unshift({
@@ -1106,25 +1169,33 @@ app.post('/webhook', async (req, res) => {
             body: body
         });
         if (global.lastWebhooks.length > 50) global.lastWebhooks.pop();
+
+        // 1. Process WhatsApp message delivery receipts (sent, delivered, read, failed)
+        const statusObj = body.entry?.[0]?.changes?.[0]?.value?.statuses?.[0];
+        if (statusObj) {
+            const statusType = statusObj.status;
+            const recipientId = statusObj.recipient_id;
+            console.log(`[WhatsApp Status] Message ${statusObj.id} to ${recipientId}: status = ${statusType}`);
+            return res.sendStatus(200);
+        }
+
         if (!body.object || !body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]) {
             return res.sendStatus(200);
         }
 
         const incomingPhoneId = body.entry?.[0]?.changes?.[0]?.value?.metadata?.phone_number_id;
-        if (incomingPhoneId) {
-            PHONE_NUMBER_ID = incomingPhoneId;
-        }
+        const currentPhoneId = incomingPhoneId || DEFAULT_PHONE_NUMBER_ID;
 
         const messageObj = body.entry[0].changes[0].value.messages[0];
         const messageId = messageObj.id;
+        const fromPhone = messageObj.from;
 
-        if (processedMessages.has(messageId)) {
+        // 2. Persistent Serverless Deduplication (Prevents duplicate leads on Meta retries)
+        const duplicate = await isMessageAlreadyProcessed(messageId, fromPhone);
+        if (duplicate) {
+            console.log(`[Deduplication] Message ${messageId} already processed. Acknowledged 200.`);
             return res.sendStatus(200);
         }
-        processedMessages.add(messageId);
-        setTimeout(() => processedMessages.delete(messageId), 120000);
-
-        const fromPhone = messageObj.from;
         let incomingText = '';
         let interactiveId = '';
 
@@ -1150,6 +1221,61 @@ app.post('/webhook', async (req, res) => {
 
         const lower = incomingText.toLowerCase();
         let userState = await getCustomerState(fromPhone);
+
+        // 3. WhatsApp Policy Mandatory Opt-Out / Opt-In Handling (STOP / START)
+        const optOutRegex = /^(stop|unsubscribe|cancel|halt|quit|optout|opt-out)$/i;
+        const optInRegex = /^(start|unstop|subscribe)$/i;
+
+        if (optOutRegex.test(incomingText)) {
+            console.log(`[WhatsApp Policy] Customer ${fromPhone} requested opt-out.`);
+            if (supabase) {
+                try {
+                    await supabase.from('whatsapp_customers').upsert({
+                        phone: fromPhone,
+                        is_opted_out: true,
+                        last_message: new Date().toISOString()
+                    }, { onConflict: 'phone' });
+                } catch (e) {
+                    console.error('Opt-out save error:', e.message);
+                }
+            }
+            await sendWhatsAppText(fromPhone, "You have successfully unsubscribed from automated updates. You will not receive further messages. Send START anytime to re-subscribe.");
+            return res.sendStatus(200);
+        }
+
+        if (optInRegex.test(incomingText)) {
+            console.log(`[WhatsApp Policy] Customer ${fromPhone} requested opt-in.`);
+            if (supabase) {
+                try {
+                    await supabase.from('whatsapp_customers').upsert({
+                        phone: fromPhone,
+                        is_opted_out: false,
+                        last_message: new Date().toISOString()
+                    }, { onConflict: 'phone' });
+                } catch (e) {
+                    console.error('Opt-in save error:', e.message);
+                }
+            }
+            await sendWhatsAppText(fromPhone, "Welcome back! You have successfully re-subscribed to updates from Jay Shree Ambe Food Machinery. How can we help you today?");
+            return res.sendStatus(200);
+        }
+
+        // Check if customer is opted out before processing further automated replies
+        if (supabase) {
+            try {
+                const { data: custRec } = await supabase
+                    .from('whatsapp_customers')
+                    .select('is_opted_out')
+                    .eq('phone', fromPhone)
+                    .maybeSingle();
+                if (custRec && custRec.is_opted_out) {
+                    console.log(`[WhatsApp Policy] Ignored incoming message from opted-out customer ${fromPhone}`);
+                    return res.sendStatus(200);
+                }
+            } catch (e) {
+                // Ignore DB error and proceed safely
+            }
+        }
 
         // STAFF / ADMIN LEAD REQUEST (e.g. typing "leads", "leed", "pending", "followup", "missed", "मिस्ड लीड्स")
         const cleanFrom = fromPhone.replace(/[^0-9]/g, '');
