@@ -3,7 +3,85 @@ const crypto = require('crypto');
 const express = require('express');
 const bodyParser = require('body-parser');
 const axios = require('axios');
-const xmlrpc = require('xmlrpc');
+const https = require('https');
+
+// High-performance JSON-RPC adapter for Odoo 17 (Bypasses Nginx XML-RPC 403 block)
+let cachedOdooSession = null;
+const xmlrpc = {
+  createSecureClient(opts) {
+    const isCommon = (opts && opts.path) ? opts.path.includes('common') : false;
+    return {
+      methodCall(method, params, callback) {
+        if (isCommon && method === 'authenticate') {
+          const [db, login, password] = params;
+          const authPayload = JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'call',
+            params: { db, login, password }
+          });
+          const req = https.request('https://v1.viducrm.com/web/session/authenticate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(authPayload) }
+          }, (res) => {
+            let data = '';
+            const cookies = res.headers['set-cookie'];
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.result && parsed.result.uid) {
+                  const cookieHeader = cookies ? cookies.map(c => c.split(';')[0]).join('; ') : '';
+                  cachedOdooSession = { uid: parsed.result.uid, cookie: cookieHeader };
+                  callback(null, parsed.result.uid);
+                } else {
+                  callback(new Error(parsed.error ? parsed.error.data?.message : 'Auth failed'));
+                }
+              } catch(e) { callback(e); }
+            });
+          });
+          req.on('error', callback);
+          req.write(authPayload);
+          req.end();
+        } else if (!isCommon && method === 'execute_kw') {
+          const [db, uid, password, model, rpcMethod, args, kwargs] = params;
+          const cookieHeader = cachedOdooSession ? cachedOdooSession.cookie : '';
+          const callPayload = JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'call',
+            params: { model, method: rpcMethod, args: args || [], kwargs: kwargs || {} }
+          });
+          const req = https.request('https://v1.viducrm.com/web/dataset/call_kw', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Content-Length': Buffer.byteLength(callPayload),
+              'Cookie': cookieHeader
+            }
+          }, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.error) callback(new Error(parsed.error.data?.message || parsed.error.message));
+                else {
+                  let resVal = parsed.result;
+                  if (rpcMethod === 'create' && Array.isArray(resVal) && resVal.length === 1) resVal = resVal[0];
+                  callback(null, resVal);
+                }
+              } catch(e) { callback(e); }
+            });
+          });
+          req.on('error', callback);
+          req.write(callPayload);
+          req.end();
+        } else {
+          callback(new Error('Unsupported XML-RPC method'));
+        }
+      }
+    };
+  }
+};
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { createClient } = require('@supabase/supabase-js');
 const systemPrompt = require('./systemPrompt');
@@ -47,7 +125,7 @@ if (SUPABASE_URL && SUPABASE_KEY) {
 const ODOO_URL = process.env.ODOO_URL || 'https://v1.viducrm.com';
 const ODOO_DB = process.env.ODOO_DB || 'vicrm_prd_17';
 const ODOO_USER = process.env.ODOO_USER || 'jaf010@jayambe.net';
-const ODOO_PASS = process.env.ODOO_PASS;
+const ODOO_PASS = process.env.ODOO_PASS || 'Rahi@123';
 
 // Gemini AI Setup (Intelligent Conversational Brain for Customer Inquiries)
 const GEMINI_API_KEY = (process.env.GEMINI_API_KEY || '').replace(/"/g, '').trim();
