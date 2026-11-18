@@ -663,7 +663,7 @@ function lookupCustomerInOdoo(phone) {
 }
 
 // Helper: Get next round-robin salesperson directly based on Odoo CRM history
-function getNextRepFromOdoo() {
+async function getNextRepFromOdoo() {
     return new Promise((resolve) => {
         try {
             const common = xmlrpc.createSecureClient({ host: 'v1.viducrm.com', port: 443, path: '/xmlrpc/2/common' });
@@ -673,7 +673,7 @@ function getNextRepFromOdoo() {
                     return resolve(SALES_TEAM[fallbackIdx]);
                 }
                 const models = xmlrpc.createSecureClient({ host: 'v1.viducrm.com', port: 443, path: '/xmlrpc/2/object' });
-                models.methodCall('execute_kw', [ODOO_DB, uid, ODOO_PASS, 'crm.lead', 'search_read', [[]], {
+                models.methodCall('execute_kw', [ODOO_DB, uid, ODOO_PASS, 'crm.lead', 'search_read', [[['type', '=', 'lead']]], {
                     fields: ['id', 'user_id'],
                     limit: 1,
                     order: 'id desc'
@@ -817,7 +817,7 @@ async function getCustomerState(phone) {
                     matchedRep = SALES_TEAM.find(m => m.name.toLowerCase() === repNameInBracket);
                 }
                 if (!matchedRep) {
-                    matchedRep = await getNextFairRoundRobinRep();
+                    matchedRep = await getNextRepFromOdoo();
                 }
 
                 // If customer submitted name OR has machine inquiry history in state (already a lead)
@@ -864,7 +864,7 @@ async function getCustomerState(phone) {
     }
 
     // 3. For BRAND NEW customer: Assign next fair round-robin salesperson!
-    const rep = await getNextFairRoundRobinRep();
+    const rep = await getNextRepFromOdoo();
     const newState = {
         lang: 'en',
         step: 'INIT',
@@ -1449,6 +1449,15 @@ app.post('/webhook', verifyWebhookSignature, async (req, res) => {
         const isBrandNewVisitor = !isCompletedCustomer && (!userState.lang || userState.step === 'INIT');
 
         if (isExplicitReset || isFirstGreeting || isBrandNewVisitor) {
+            if (!userState.assignedRep || !userState.assignedRepPhone) {
+                const odooNext = await getNextRepFromOdoo();
+                userState.assignedRep = odooNext.name;
+                userState.assignedRepId = odooNext.id;
+                userState.assignedRepGu = odooNext.gu;
+                userState.assignedRepHi = odooNext.hi;
+                userState.assignedRepEn = odooNext.en;
+                userState.assignedRepPhone = odooNext.phone;
+            }
             ensureAssignedRep(userState, fromPhone);
             await saveCustomerState(fromPhone, { ...userState, step: 'LANG' });
             await syncLeadToOdoo(fromPhone, userState);
