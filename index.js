@@ -158,9 +158,21 @@ const SALES_TEAM = [
     { id: 8, name: 'Siya', phone: '+91 97239 28746', gu: 'સિયાબેન', hi: 'सिया जी', en: 'Ms. Siya' }
 ];
 
-function ensureAssignedRep(userState) {
+function getDeterministicRepForPhone(phone) {
+    if (!phone) return SALES_TEAM[0];
+    const cleanDigits = String(phone).replace(/[^0-9]/g, "");
+    let hash = 0;
+    for (let i = 0; i < cleanDigits.length; i++) {
+        hash = (hash * 31 + cleanDigits.charCodeAt(i)) >>> 0;
+    }
+    const index = hash % SALES_TEAM.length;
+    return SALES_TEAM[index];
+}
+
+function ensureAssignedRep(userState, phone) {
+    const custPhone = phone || userState.phone;
     if (!userState.assignedRep || !userState.assignedRepPhone) {
-        const fallback = SALES_TEAM[0];
+        const fallback = getDeterministicRepForPhone(custPhone);
         userState.assignedRep = fallback.name;
         userState.assignedRepId = fallback.id;
         userState.assignedRepGu = fallback.gu;
@@ -169,13 +181,14 @@ function ensureAssignedRep(userState) {
         userState.assignedRepPhone = fallback.phone;
     }
     const matched = SALES_TEAM.find(m => m.name.toLowerCase() === (userState.assignedRep || '').toLowerCase());
+    const rep = matched || getDeterministicRepForPhone(custPhone);
     return {
-        id: userState.assignedRepId || matched?.id || 6,
-        name: userState.assignedRep,
-        gu: userState.assignedRepGu || matched?.gu || userState.assignedRep,
-        hi: userState.assignedRepHi || matched?.hi || userState.assignedRep,
-        en: userState.assignedRepEn || matched?.en || userState.assignedRep,
-        phone: userState.assignedRepPhone || matched?.phone
+        id: userState.assignedRepId || rep.id,
+        name: userState.assignedRep || rep.name,
+        gu: userState.assignedRepGu || rep.gu,
+        hi: userState.assignedRepHi || rep.hi,
+        en: userState.assignedRepEn || rep.en,
+        phone: userState.assignedRepPhone || rep.phone
     };
 }
 
@@ -1436,8 +1449,9 @@ app.post('/webhook', verifyWebhookSignature, async (req, res) => {
         const isBrandNewVisitor = !isCompletedCustomer && (!userState.lang || userState.step === 'INIT');
 
         if (isExplicitReset || isFirstGreeting || isBrandNewVisitor) {
-            ensureAssignedRep(userState);
+            ensureAssignedRep(userState, fromPhone);
             await saveCustomerState(fromPhone, { ...userState, step: 'LANG' });
+            await syncLeadToOdoo(fromPhone, userState);
             await sendInteractiveButtons(fromPhone, "Welcome to Jay Shree Ambe Food Machinery! 🙏\nDirect Manufacturer of Commercial Pulverizers.\n\nPlease select your preferred language:\nકૃપા કરીને આપની ભાષા પસંદ કરો:\nकृपया अपनी भाषा चुनें:", [
                 { id: 'lang_en', title: 'English' },
                 { id: 'lang_hi', title: 'हिंदी' },
@@ -1607,7 +1621,8 @@ app.post('/webhook', verifyWebhookSignature, async (req, res) => {
             userState.category = incomingText;
             userState.categoryEn = catNameEn;
             userState.step = 'TYPE';
-            await saveCustomerState(fromPhone, userState); // Visitors/in-progress saved to Supabase only
+            await saveCustomerState(fromPhone, userState);
+            await syncLeadToOdoo(fromPhone, userState);
 
             const qText = (lang === 'gu') ? 'આપ સાયક્લોન ડસ્ટ કલેક્ટર સાથે મશીન મેળવવા માંગો છો કે સ્ટાન્ડર્ડ?' :
                           (lang === 'hi') ? 'क्या आप साइक्लोन डस्ट कलेक्टर के साथ मशीन चाहते हैं या साधारण?' :
@@ -1962,18 +1977,27 @@ function syncLeadToOdoo(phone, leadData) {
                     leadData.assignedRepEn = assignedRep.en;
                     leadData.assignedRepPhone = assignedRep.phone;
 
+                    const cleanName = (leadData.name || "").replace(/\s*\[.*?\]$/, "").trim();
+                    const isRealName = cleanName && !cleanName.startsWith("WhatsApp") && !cleanName.startsWith("New Lead");
+                    const displayName = isRealName ? cleanName : "WhatsApp Visitor";
+                    const displayTitle = isRealName 
+                        ? `WhatsApp Lead: ${cleanName} - ${leadData.hp || "20 HP"} (${leadData.typeEn || leadData.type || "Commercial"})`
+                        : `WhatsApp Lead: ${phone} - Initial Inquiry`;
+
                     const leadRecord = {
-                        name: `WhatsApp Lead: ${leadData.name || 'Customer'} - ${leadData.hp || '20 HP'} (${leadData.typeEn || leadData.type || 'Commercial'})`,
-                        contact_name: leadData.name || 'Customer',
+                        name: displayTitle,
+                        contact_name: displayName,
                         mobile: phone,
                         phone: phone,
-                        city: leadData.city || '',
+                        city: (leadData.city && leadData.city !== "Pending") ? leadData.city : "",
                         user_id: assignedRep.id,
-                        description: `Assigned Sales Executive: ${assignedRep.name} (${assignedRep.phone})\nCategory: ${leadData.categoryEn || leadData.category || ''}\nType: ${leadData.typeEn || leadData.type || ''}\nCapacity: ${leadData.hp || ''}\nState: ${leadData.state || ''}\nLanguage: ${leadData.lang || ''}\nSource: WhatsApp AI Interactive Agent`
+                        active: true,
+                        type: "lead",
+                        description: `Assigned Sales Executive: ${assignedRep.name} (${assignedRep.phone})\nCategory: ${leadData.categoryEn || leadData.category || "Commercial Pulverizer"}\nType: ${leadData.typeEn || leadData.type || "Inquiry"}\nCapacity: ${leadData.hp || ""}\nState: ${leadData.state || ""}\nLanguage: ${leadData.lang || ""}\nSource: WhatsApp AI Interactive Agent`
                     };
 
                     if (leadData.leadId) {
-                        models.methodCall('execute_kw', [ODOO_DB, uid, ODOO_PASS, 'crm.lead', 'write', [[leadData.leadId], leadRecord]], (writeErr, success) => {
+                        models.methodCall("execute_kw", [ODOO_DB, uid, ODOO_PASS, "crm.lead", "write", [[leadData.leadId], leadRecord]], (writeErr, success) => {
                             if (!writeErr) {
                                 console.log(`Successfully updated Odoo lead ID: ${leadData.leadId} under rep: ${assignedRep.name}`);
                             }
@@ -1982,12 +2006,28 @@ function syncLeadToOdoo(phone, leadData) {
                         return;
                     }
 
-                    models.methodCall('execute_kw', [ODOO_DB, uid, ODOO_PASS, 'crm.lead', 'create', [leadRecord]], (leadErr, leadId) => {
-                        if (!leadErr) {
-                            leadData.leadId = leadId;
-                            console.log(`Successfully logged Odoo lead ID: ${leadId} under PERMANENT rep: ${assignedRep.name}`);
+                    // Look up if phone already has lead in Odoo before creating new
+                    const plainPhone = String(phone).replace(/[^0-9]/g, "").slice(-10);
+                    models.methodCall("execute_kw", [ODOO_DB, uid, ODOO_PASS, "crm.lead", "search_read", [[
+                        "|",
+                        ["mobile", "ilike", plainPhone],
+                        ["phone", "ilike", plainPhone]
+                    ]], { fields: ["id", "user_id"], limit: 1, order: "id desc" }], (searchErr, existingLeads) => {
+                        if (!searchErr && Array.isArray(existingLeads) && existingLeads.length > 0) {
+                            leadData.leadId = existingLeads[0].id;
+                            models.methodCall("execute_kw", [ODOO_DB, uid, ODOO_PASS, "crm.lead", "write", [[leadData.leadId], leadRecord]], (writeErr) => {
+                                console.log(`Updated existing Odoo lead ID: ${leadData.leadId} for ${phone} under rep: ${assignedRep.name}`);
+                                resolve(true);
+                            });
+                        } else {
+                            models.methodCall("execute_kw", [ODOO_DB, uid, ODOO_PASS, "crm.lead", "create", [leadRecord]], (leadErr, leadId) => {
+                                if (!leadErr && leadId) {
+                                    leadData.leadId = Array.isArray(leadId) ? leadId[0] : leadId;
+                                    console.log(`Successfully created new Odoo lead ID: ${leadData.leadId} under rep: ${assignedRep.name}`);
+                                }
+                                resolve(true);
+                            });
                         }
-                        resolve(true);
                     });
                     return;
                 }
