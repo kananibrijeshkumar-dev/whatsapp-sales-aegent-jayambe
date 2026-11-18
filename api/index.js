@@ -1607,8 +1607,7 @@ app.post('/webhook', verifyWebhookSignature, async (req, res) => {
             userState.category = incomingText;
             userState.categoryEn = catNameEn;
             userState.step = 'TYPE';
-            await saveCustomerState(fromPhone, userState);
-            await syncLeadToOdoo(fromPhone, userState);
+            await saveCustomerState(fromPhone, userState); // Visitors/in-progress saved to Supabase only
 
             const qText = (lang === 'gu') ? 'આપ સાયક્લોન ડસ્ટ કલેક્ટર સાથે મશીન મેળવવા માંગો છો કે સ્ટાન્ડર્ડ?' :
                           (lang === 'hi') ? 'क्या आप साइक्लोन डस्ट कलेक्टर के साथ मशीन चाहते हैं या साधारण?' :
