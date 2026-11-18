@@ -115,7 +115,7 @@ const ADMIN_DEBUG_SECRET = (process.env.ADMIN_DEBUG_SECRET || 'briz_crm_admin_de
 
 // Supabase Setup (Service Role Key loaded securely from environment)
 const SUPABASE_URL = process.env.SUPABASE_URL || "https://uosqmchlfvvevvdmhozi.supabase.co";
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVvc3FtY2hsZnZ2ZXZ2ZG1ob3ppIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Njc0NzA1MiwiZXhwIjoyMTAyMzIzMDUyfQ.TapgthZQdJwY4PDSR8FzwZWcZqeifc2ecg6xy_2Pt_k";
 let supabase = null;
 if (SUPABASE_URL && SUPABASE_KEY) {
     supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
