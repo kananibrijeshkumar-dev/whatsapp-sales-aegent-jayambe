@@ -595,7 +595,7 @@ function syncInitialLeadToOdoo(phone, userState) {
                 const models = xmlrpc.createSecureClient({ host: 'v1.viducrm.com', port: 443, path: '/xmlrpc/2/object' });
                 const istTime = getISTTimestamp();
                 const leadRecord = {
-                    name: `WhatsApp Lead: ${phone} - Initial Inquiry`,
+                    name: `WhatsApp Visitor: ${phone} - Initial Inquiry`,
                     contact_name: userState.name || 'WhatsApp Visitor',
                     mobile: phone,
                     phone: phone,
@@ -1460,7 +1460,7 @@ app.post('/webhook', verifyWebhookSignature, async (req, res) => {
             }
             ensureAssignedRep(userState, fromPhone);
             await saveCustomerState(fromPhone, { ...userState, step: 'LANG' });
-            await syncLeadToOdoo(fromPhone, userState);
+            // Immediate visitor sync disabled: Visitors are routed to CRM after 10 minutes via vidu-crm-feed
             await sendInteractiveButtons(fromPhone, "Welcome to Jay Shree Ambe Food Machinery! 🙏\nDirect Manufacturer of Commercial Pulverizers.\n\nPlease select your preferred language:\nકૃપા કરીને આપની ભાષા પસંદ કરો:\nकृपया अपनी भाषा चुनें:", [
                 { id: 'lang_en', title: 'English' },
                 { id: 'lang_hi', title: 'हिंदी' },
@@ -1991,7 +1991,7 @@ function syncLeadToOdoo(phone, leadData) {
                     const displayName = isRealName ? cleanName : "WhatsApp Visitor";
                     const displayTitle = isRealName 
                         ? `WhatsApp Lead: ${cleanName} - ${leadData.hp || "20 HP"} (${leadData.typeEn || leadData.type || "Commercial"})`
-                        : `WhatsApp Lead: ${phone} - Initial Inquiry`;
+                        : `WhatsApp Visitor: ${phone} - Initial Inquiry`;
 
                     const leadRecord = {
                         name: displayTitle,
